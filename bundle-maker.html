@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Steam Bundle Maker</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #1b2838; --bg2: #171d25; --surface: #2a3f5a; --surface2: #1e3448; --surface3: #253d58;
+  --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.15);
+  --text: #c6d4df; --text-bright: #ffffff; --text-muted: #8ba3b8; --text-dim: #556b7d;
+  --accent: #66c0f4; --green: #a4d007; --green-bright: #beee11;
+  --discount-bg: #4c6b22; --discount-text: #a4d007;
+  --steam-btn: #47a24b; --danger: #f87171; --steam-blue: #1b9df0;
+}
+body { background: var(--bg2); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.5; min-height: 100vh; }
+.container { max-width: 940px; margin: 0 auto; padding: 1.5rem; }
+
+/* Nav tabs */
+.nav { display: flex; gap: 2px; margin-bottom: 1.5rem; border-bottom: 2px solid var(--border2); }
+.nav-btn { background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; padding: 10px 20px; color: var(--text-muted); font-size: 14px; cursor: pointer; border-radius: 0; }
+.nav-btn:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+.nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* Header */
+.header { margin-bottom: 1.5rem; }
+.header h1 { font-size: 22px; font-weight: 600; color: var(--text-bright); margin-bottom: 4px; }
+.header p { color: var(--text-muted); font-size: 12px; }
+
+/* Inputs & buttons */
+input[type="text"] { background: var(--surface2); border: 1px solid var(--border2); border-radius: 3px; padding: 9px 12px; color: var(--text-bright); font-size: 14px; width: 100%; outline: none; transition: border-color 0.15s; }
+input[type="text"]:focus { border-color: var(--accent); }
+input[type="text"]::placeholder { color: var(--text-dim); }
+button { background: linear-gradient(to bottom, #4d7fac, #3a6390); border: 1px solid #2a4f73; border-radius: 3px; padding: 9px 18px; color: var(--text-bright); font-size: 13px; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
+button:hover { background: linear-gradient(to bottom, #5d8fbc, #4a73a0); }
+button.green { background: linear-gradient(to bottom, var(--steam-btn), #3a8a3e); border-color: #2d6b30; }
+button.green:hover { background: linear-gradient(to bottom, #57b25b, #4a9a4e); }
+button.btn-twitter { background: linear-gradient(to bottom, #1da1f2, #0d8fd9); border-color: #0a7abf; }
+
+/* Search */
+.search-row { display: flex; gap: 8px; margin-bottom: 0.5rem; }
+.hint { font-size: 12px; color: var(--text-dim); min-height: 18px; margin-bottom: 8px; }
+.search-results { background: var(--surface2); border: 1px solid var(--border2); border-radius: 3px; overflow: hidden; margin-bottom: 1.25rem; display: none; }
+.sr-item { padding: 8px 12px; display: flex; align-items: center; gap: 12px; cursor: pointer; border-bottom: 1px solid var(--border); transition: background 0.1s; }
+.sr-item:last-child { border-bottom: none; }
+.sr-item:hover { background: var(--surface3); }
+.sr-thumb { width: 86px; height: 32px; object-fit: cover; border-radius: 2px; background: var(--surface); flex-shrink: 0; }
+.sr-info { flex: 1; min-width: 0; }
+.sr-name { font-weight: 500; color: var(--text-bright); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+.sr-price-wrap { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.sr-discount { background: var(--discount-bg); color: var(--discount-text); font-size: 13px; font-weight: 700; padding: 3px 8px; border-radius: 2px; }
+.sr-final { color: var(--green-bright); font-size: 13px; font-weight: 600; }
+.sr-orig { color: var(--text-dim); text-decoration: line-through; font-size: 11px; }
+.sr-normal { color: var(--text-muted); font-size: 13px; }
+.sr-add { width: 28px; height: 28px; background: linear-gradient(to bottom, var(--steam-btn), #3a8a3e); border-radius: 2px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 20px; flex-shrink: 0; border: 1px solid #2d6b30; }
+.sr-item:hover .sr-add { background: linear-gradient(to bottom, #57b25b, #4a9a4e); }
+
+/* Bundle list */
+.bundle-section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+.bundle-section-header h2 { font-size: 14px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 0.04em; }
+.bundle-count-badge { font-size: 11px; padding: 2px 8px; border-radius: 2px; background: var(--surface); color: var(--text-muted); border: 1px solid var(--border2); }
+.bundle-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: 1.5rem; }
+.bundle-empty { color: var(--text-dim); font-size: 13px; text-align: center; padding: 2rem; background: var(--surface2); border: 1px dashed var(--border2); border-radius: 3px; }
+
+/* Game card */
+.game-card { display: flex; align-items: center; background: var(--surface2); border: 1px solid var(--border); transition: background 0.1s; }
+.game-card:hover { background: var(--surface3); }
+.game-capsule { width: 184px; height: 69px; object-fit: cover; flex-shrink: 0; background: var(--surface); }
+.game-body { flex: 1; min-width: 0; padding: 0 14px; }
+.game-name { font-weight: 600; color: var(--text-bright); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.game-price-block { display: flex; align-items: center; gap: 8px; padding: 0 14px; flex-shrink: 0; }
+.price-discount-badge { background: var(--discount-bg); color: var(--discount-text); font-size: 16px; font-weight: 700; padding: 6px 10px; border-radius: 2px; min-width: 56px; text-align: center; }
+.price-values { display: flex; flex-direction: column; align-items: flex-end; }
+.price-orig { color: var(--text-dim); text-decoration: line-through; font-size: 11px; }
+.price-final { color: var(--green-bright); font-size: 16px; font-weight: 700; }
+.price-normal { color: var(--text-muted); font-size: 14px; font-weight: 600; }
+.price-loading { color: var(--text-dim); font-size: 12px; font-style: italic; }
+.game-actions-col { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0 12px; flex-shrink: 0; border-left: 1px solid var(--border); }
+.game-link { color: var(--accent); text-decoration: none; font-size: 12px; }
+.game-link:hover { color: var(--text-bright); }
+.game-remove { background: none; border: none; cursor: pointer; color: var(--text-dim); padding: 2px 6px; font-size: 16px; line-height: 1; border-radius: 2px; }
+.game-remove:hover { color: var(--danger); background: rgba(248,113,113,0.1); }
+
+/* Summary */
+.savings-banner { background: rgba(164,208,7,0.1); border: 1px solid rgba(164,208,7,0.3); border-radius: 3px; padding: 10px 16px; margin-bottom: 1rem; display: flex; align-items: center; gap: 12px; }
+.summary-bar { background: var(--surface2); border: 1px solid var(--border2); border-radius: 3px; padding: 14px 18px; margin-bottom: 1.5rem; }
+.summary-bar-inner { display: flex; align-items: center; justify-content: flex-end; gap: 24px; flex-wrap: wrap; }
+.sum-row { display: flex; align-items: baseline; gap: 8px; }
+.sum-label { font-size: 12px; color: var(--text-muted); }
+.sum-value { font-size: 16px; font-weight: 700; color: var(--text-bright); }
+.sum-divider { width: 1px; height: 28px; background: var(--border2); }
+
+/* Share */
+.share-section { background: var(--surface2); border: 1px solid var(--border2); border-radius: 3px; padding: 1.25rem; }
+.share-section h2 { font-size: 13px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 10px; }
+.share-title-input { width: 100%; margin-bottom: 10px; }
+.share-url-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.share-url { flex: 1; background: var(--bg2); border: 1px solid var(--border2); border-radius: 3px; padding: 9px 12px; font-family: monospace; font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.publish-row { display: flex; gap: 8px; align-items: center; padding-top: 10px; border-top: 1px solid var(--border); }
+.publish-note { font-size: 11px; color: var(--text-dim); flex: 1; }
+.status-msg { font-size: 12px; color: var(--text-dim); margin-top: 8px; min-height: 16px; }
+.status-msg.ok { color: var(--green); }
+.status-msg.err { color: var(--danger); }
+
+/* Ranking */
+.rank-tabs { display: flex; gap: 4px; margin-bottom: 1rem; }
+.rank-tab { font-size: 12px; padding: 5px 14px; border-radius: 3px; }
+.rank-tab.active { background: var(--accent); border-color: var(--accent); color: var(--bg2); }
+.rank-item { display: flex; align-items: center; gap: 12px; background: var(--surface2); border: 1px solid var(--border); padding: 8px 12px; margin-bottom: 2px; border-radius: 2px; }
+.rank-num { font-size: 18px; font-weight: 700; color: var(--text-dim); min-width: 32px; text-align: center; }
+.rank-num.gold { color: #ffd700; }
+.rank-num.silver { color: #c0c0c0; }
+.rank-num.bronze { color: #cd7f32; }
+.rank-thumb { width: 80px; height: 30px; object-fit: cover; border-radius: 2px; background: var(--surface); flex-shrink: 0; }
+.rank-info { flex: 1; min-width: 0; }
+.rank-name { font-weight: 600; color: var(--text-bright); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rank-price { font-size: 12px; color: var(--green-bright); }
+.rank-count { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+.rank-discount { font-size: 11px; background: var(--discount-bg); color: var(--discount-text); padding: 1px 6px; border-radius: 2px; }
+
+/* Bundle cards */
+.bundle-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.bundle-card { background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px; padding: 12px 14px; cursor: pointer; transition: border-color 0.15s; }
+.bundle-card:hover { border-color: var(--accent); }
+.bundle-card-title { font-weight: 600; color: var(--text-bright); font-size: 13px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bundle-card-meta { font-size: 11px; color: var(--text-dim); }
+
+/* View mode */
+.view-hero { background: var(--surface); border: 1px solid var(--border2); border-radius: 3px; padding: 1.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.view-hero h2 { font-size: 22px; font-weight: 700; color: var(--text-bright); margin-bottom: 6px; }
+.view-badge { display: inline-block; font-size: 11px; padding: 2px 10px; background: rgba(164,208,7,0.1); color: var(--green); border-radius: 2px; margin-bottom: 8px; border: 1px solid rgba(164,208,7,0.3); }
+.back-btn { margin-bottom: 1rem; }
+.loading-msg { text-align: center; padding: 3rem; color: var(--text-dim); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>🎮 Steam Bundle Maker</h1>
+    <p>好きなゲームをまとめてURLで共有 — 俺バンドル</p>
+  </div>
+  <nav class="nav">
+    <button class="nav-btn active" data-tab="maker">🛠 バンドルを作る</button>
+    <button class="nav-btn" data-tab="ranking">🏆 ランキング</button>
+    <button class="nav-btn" data-tab="bundles">📦 みんなのバンドル</button>
+  </nav>
+  <div id="tabContent"></div>
+</div>
+
+<script>
+const PROXY = 'https://steam-proxy.kutinawa-channel.workers.dev';
+
+let currentTab = 'maker';
+let games = [];
+let priceCache = {};
+let isViewMode = false;
+let viewTitle = '';
+let viewBundleId = '';
+
+// ---- Init ----
+function init() {
+  const params = new URLSearchParams(location.search);
+  const bundleId = params.get('bundle');
+  const b = params.get('b');
+  if (bundleId) {
+    isViewMode = true;
+    loadBundleById(bundleId);
+    return;
+  }
+  if (b) {
+    loadFromUrlParam(b, params.get('t'));
+    isViewMode = true;
+  }
+  renderTab(currentTab);
+  setupNav();
+}
+
+function setupNav() {
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentTab = btn.dataset.tab;
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (isViewMode && currentTab === 'maker') { /* stay in view */ }
+      renderTab(currentTab);
+    });
+  });
+}
+
+function renderTab(tab) {
+  const el = document.getElementById('tabContent');
+  if (tab === 'maker') {
+    el.innerHTML = isViewMode ? renderView() : renderEdit();
+    attachMakerEvents();
+  } else if (tab === 'ranking') {
+    el.innerHTML = renderRankingShell();
+    attachRankingEvents();
+    loadRanking('alltime');
+  } else if (tab === 'bundles') {
+    el.innerHTML = `<div class="loading-msg">読み込み中...</div>`;
+    loadBundleList();
+  }
+}
+
+// ---- URL load ----
+function loadFromUrlParam(b, t) {
+  try {
+    const data = JSON.parse(decodeURIComponent(escape(atob(b))));
+    games = data.map(g => ({ appid: g.id, name: g.n, price: g.p ?? null, discount: g.d || 0, finalFmt: g.f || null, origPrice: g.o || 0, origFmt: g.of || null }));
+    if (t) viewTitle = decodeURIComponent(t);
+  } catch(e) {}
+}
+
+async function loadBundleById(id) {
+  document.getElementById('tabContent').innerHTML = `<div class="loading-msg">バンドルを読み込み中...</div>`;
+  try {
+    const r = await fetch(`${PROXY}/bundle/get/${id}`);
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+    games = data.games;
+    viewTitle = data.title;
+    viewBundleId = id;
+    isViewMode = true;
+    renderTab('maker');
+    setupNav();
+  } catch(e) {
+    document.getElementById('tabContent').innerHTML = `<div class="loading-msg">バンドルが見つかりませんでした</div>`;
+  }
+}
+
+// ---- Maker ----
+function renderEdit() {
+  const { total, origTotal, savings, pct } = calcSavings();
+  return `
+    <div class="search-row">
+      <input type="text" id="searchInput" placeholder="ゲーム名で検索 (例: Far Cry, Hollow Knight...)" autocomplete="off" />
+      <button id="searchBtn">🔍 検索</button>
+    </div>
+    <div class="hint" id="searchHint"></div>
+    <div class="search-results" id="searchResults"></div>
+    <div class="bundle-section-header">
+      <h2>バンドル内容</h2>
+      <span class="bundle-count-badge" id="bundleCountBadge">${games.length} タイトル</span>
+    </div>
+    <div class="bundle-list" id="bundleList">${renderBundleItems(false)}</div>
+    ${savings > 0 ? `<div class="savings-banner"><span>🤑</span><span>合計 <strong style="color:var(--green-bright)">¥${fmt(savings)} お得！</strong>（平均 ${pct}% オフ）</span></div>` : ''}
+    <div class="summary-bar" id="summaryBar"><div class="summary-bar-inner">${renderSummaryInner(total, origTotal, savings)}</div></div>
+    <div class="share-section">
+      <h2>🔗 共有</h2>
+      <input type="text" class="share-title-input" id="bundleTitle" placeholder="バンドルのタイトル (例: 夏セールRPGおすすめ)" />
+      <div class="share-url-row">
+        <div class="share-url" id="shareUrl">${buildUrlParam()}</div>
+        <button id="copyBtn">📋 コピー</button>
+        <button class="btn-twitter" id="tweetBtn">🐦 ツイート</button>
+      </div>
+      <div class="publish-row">
+        <span class="publish-note">公開するとランキングに反映され、みんなのバンドル一覧に載ります</span>
+        <button class="green" id="publishBtn">🌐 公開して保存</button>
+      </div>
+      <div class="status-msg" id="statusMsg"></div>
+    </div>`;
+}
+
+function renderView() {
+  const { total, origTotal, savings, pct } = calcSavings();
+  return `
+    <button class="back-btn" id="backBtn">← 自分のバンドルを作る</button>
+    <div class="view-hero">
+      <div>
+        <div class="view-badge">🎮 Steamバンドル</div>
+        <h2>${esc(viewTitle || 'おすすめバンドル')}</h2>
+        <p>${games.length} タイトル収録</p>
+      </div>
+      <div style="text-align:right">
+        ${pct > 0 ? `<div style="font-size:28px;font-weight:700;color:var(--discount-text);background:var(--discount-bg);padding:8px 16px;border-radius:3px;display:inline-block">-${pct}%</div>` : ''}
+        ${origTotal > 0 ? `<div style="font-size:13px;color:var(--text-dim);text-decoration:line-through;margin-top:4px">¥${fmt(origTotal)}</div>` : ''}
+        <div style="font-size:24px;font-weight:700;color:var(--green-bright)">¥${fmt(total)}</div>
+      </div>
+    </div>
+    <div class="bundle-section-header"><h2>このバンドルに含まれるアイテム</h2><span class="bundle-count-badge">${games.length} タイトル</span></div>
+    <div class="bundle-list">${renderBundleItems(true)}</div>
+    ${savings > 0 ? `<div class="savings-banner"><span>🤑</span><span>合計 <strong style="color:var(--green-bright)">¥${fmt(savings)} お得！</strong>（平均 ${pct}% オフ）</span></div>` : ''}
+    <div class="summary-bar"><div class="summary-bar-inner">${renderSummaryInner(total, origTotal, savings)}</div></div>
+    <div style="text-align:center;margin-top:1.5rem"><button class="green" id="backBtn2">自分のバンドルを作る →</button></div>`;
+}
+
+function renderBundleItems(viewMode) {
+  if (games.length === 0) return '<div class="bundle-empty">ゲームを検索して追加してください</div>';
+  return games.map(g => {
+    const capsule = `https://cdn.akamai.steamstatic.com/steam/apps/${g.appid}/header.jpg`;
+    let priceHtml = g.price === null
+      ? `<span class="price-loading">取得中...</span>`
+      : g.discount > 0
+        ? `<div class="price-discount-badge">-${g.discount}%</div><div class="price-values"><span class="price-orig">${g.origFmt || ''}</span><span class="price-final">${g.finalFmt || '¥'+fmt(g.price)}</span></div>`
+        : `<div class="price-values"><span class="price-normal">${g.finalFmt || (g.price === 0 ? '無料' : '¥'+fmt(g.price))}</span></div>`;
+    return `<div class="game-card" data-appid="${g.appid}">
+      <img class="game-capsule" src="${capsule}" alt="${esc(g.name)}" onerror="this.src='https://cdn.akamai.steamstatic.com/steam/apps/${g.appid}/capsule_231x87.jpg'" />
+      <div class="game-body"><div class="game-name">${esc(g.name)}</div></div>
+      <div class="game-price-block">${priceHtml}</div>
+      <div class="game-actions-col">
+        <a class="game-link" href="https://store.steampowered.com/app/${g.appid}/" target="_blank">Steamで見る ↗</a>
+        ${viewMode ? '' : `<button class="game-remove" data-remove="${g.appid}">✕</button>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderSummaryInner(total, origTotal, savings) {
+  return `
+    <div class="sum-row"><span class="sum-label">タイトル数</span><span class="sum-value" style="color:var(--accent)">${games.length}</span></div>
+    <div class="sum-divider"></div>
+    ${origTotal > 0 ? `<div class="sum-row"><span class="sum-label">定価合計</span><span class="sum-value" style="text-decoration:line-through;color:var(--text-dim)">¥${fmt(origTotal)}</span></div><div class="sum-divider"></div>` : ''}
+    <div class="sum-row"><span class="sum-label">セール合計</span><span class="sum-value" style="color:var(--green-bright)">¥${fmt(total)}</span></div>
+    ${savings > 0 ? `<div class="sum-divider"></div><div class="sum-row"><span class="sum-label">割引額</span><span class="sum-value" style="color:var(--discount-text)">-¥${fmt(savings)}</span></div>` : ''}`;
+}
+
+function attachMakerEvents() {
+  const si = document.getElementById('searchInput');
+  const sb = document.getElementById('searchBtn');
+  if (si) si.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+  if (sb) sb.addEventListener('click', doSearch);
+  const bt = document.getElementById('bundleTitle');
+  if (bt) bt.addEventListener('input', updateShareUrl);
+  const copyBtn = document.getElementById('copyBtn');
+  if (copyBtn) copyBtn.addEventListener('click', copyUrl);
+  const tweetBtn = document.getElementById('tweetBtn');
+  if (tweetBtn) tweetBtn.addEventListener('click', shareTwitter);
+  const publishBtn = document.getElementById('publishBtn');
+  if (publishBtn) publishBtn.addEventListener('click', publishBundle);
+  const backBtn = document.getElementById('backBtn');
+  if (backBtn) backBtn.addEventListener('click', resetToEdit);
+  const backBtn2 = document.getElementById('backBtn2');
+  if (backBtn2) backBtn2.addEventListener('click', resetToEdit);
+  const bl = document.getElementById('bundleList');
+  if (bl) bl.addEventListener('click', e => {
+    const btn = e.target.closest('[data-remove]');
+    if (btn) removeGame(Number(btn.dataset.remove));
+  });
+}
+
+// ---- Search ----
+async function doSearch() {
+  const si = document.getElementById('searchInput');
+  if (!si) return;
+  const q = si.value.trim();
+  if (!q) return;
+  const res = document.getElementById('searchResults');
+  const hint = document.getElementById('searchHint');
+  res.style.display = 'block';
+  hint.textContent = '検索中...';
+  res.innerHTML = `<div class="sr-item"><span style="color:var(--text-dim)">検索中...</span></div>`;
+  try {
+    const r = await fetch(`${PROXY}/search?term=${encodeURIComponent(q)}&cc=jp`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    hint.textContent = '';
+    if (!d.items || d.items.length === 0) {
+      res.innerHTML = `<div class="sr-item"><span style="color:var(--text-dim)">見つかりませんでした</span></div>`; return;
+    }
+    const items = d.items.slice(0, 10);
+    res.innerHTML = items.map(item => `
+      <div class="sr-item" data-appid="${item.id}" data-name="${esc(item.name)}">
+        <img class="sr-thumb" src="https://cdn.akamai.steamstatic.com/steam/apps/${item.id}/capsule_sm_120.jpg" alt="" onerror="this.style.visibility='hidden'" />
+        <div class="sr-info"><div class="sr-name">${esc(item.name)}</div></div>
+        <div class="sr-price-wrap" id="srp-${item.id}"><span class="sr-normal" style="color:var(--text-dim)">取得中...</span></div>
+        <div class="sr-add">＋</div>
+      </div>`).join('');
+    res.querySelectorAll('.sr-item').forEach(el => {
+      el.addEventListener('click', () => selectGame(Number(el.dataset.appid), el.dataset.name));
+    });
+    items.forEach(item => fetchPrice(item.id, true));
+  } catch(e) {
+    hint.textContent = '';
+    res.innerHTML = `<div class="sr-item"><span style="color:var(--danger)">エラー: ${e.message}</span></div>`;
+  }
+}
+
+async function fetchPrice(appid, updateResult = false) {
+  if (priceCache[appid] !== undefined) {
+    if (updateResult) applyResultPrice(appid, priceCache[appid]);
+    return priceCache[appid];
+  }
+  try {
+    const r = await fetch(`${PROXY}/appdetails?appids=${appid}&cc=jp`);
+    const d = await r.json();
+    const po = d[String(appid)]?.data?.price_overview;
+    const info = po
+      ? { price: po.final, origPrice: po.initial, discount: po.discount_percent, finalFmt: po.final_formatted, origFmt: po.initial_formatted }
+      : { price: 0, origPrice: 0, discount: 0, finalFmt: '無料', origFmt: '' };
+    priceCache[appid] = info;
+    if (updateResult) applyResultPrice(appid, info);
+    const g = games.find(g => g.appid === appid);
+    if (g) { Object.assign(g, info); reRenderBundle(); }
+    return info;
+  } catch(e) { return null; }
+}
+
+function applyResultPrice(appid, info) {
+  const el = document.getElementById(`srp-${appid}`);
+  if (!el) return;
+  if (info.discount > 0) {
+    el.innerHTML = `<span class="sr-discount">-${info.discount}%</span><div style="display:flex;flex-direction:column;align-items:flex-end"><span class="sr-orig">${info.origFmt}</span><span class="sr-final">${info.finalFmt}</span></div>`;
+  } else {
+    el.innerHTML = `<span class="sr-normal">${info.finalFmt || '無料'}</span>`;
+  }
+}
+
+function selectGame(appid, name) {
+  if (games.find(g => g.appid === appid)) { setStatus('このゲームはすでに追加されています'); return; }
+  const pc = priceCache[appid];
+  games.push({ appid, name, price: pc ? pc.price : null, discount: pc ? pc.discount : 0, finalFmt: pc ? pc.finalFmt : null, origPrice: pc ? pc.origPrice : null, origFmt: pc ? pc.origFmt : null });
+  document.getElementById('searchResults').style.display = 'none';
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchHint').textContent = '';
+  reRenderBundle();
+  if (!pc) fetchPrice(appid);
+}
+
+function removeGame(appid) {
+  games = games.filter(g => g.appid !== appid);
+  reRenderBundle();
+}
+
+function reRenderBundle() {
+  const bl = document.getElementById('bundleList');
+  if (!bl) return;
+  bl.innerHTML = renderBundleItems(false);
+  bl.addEventListener('click', e => {
+    const btn = e.target.closest('[data-remove]');
+    if (btn) removeGame(Number(btn.dataset.remove));
+  });
+  const badge = document.getElementById('bundleCountBadge');
+  if (badge) badge.textContent = `${games.length} タイトル`;
+  const { total, origTotal, savings } = calcSavings();
+  const sb = document.getElementById('summaryBar');
+  if (sb) sb.querySelector('.summary-bar-inner').innerHTML = renderSummaryInner(total, origTotal, savings);
+  updateShareUrl();
+}
+
+// ---- Publish ----
+async function publishBundle() {
+  if (games.length === 0) { setStatus('ゲームを追加してから公開してください', 'err'); return; }
+  const title = document.getElementById('bundleTitle')?.value || '無題のバンドル';
+  const btn = document.getElementById('publishBtn');
+  btn.disabled = true;
+  btn.textContent = '公開中...';
+  try {
+    const r = await fetch(`${PROXY}/bundle/save`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, games }),
+    });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    const publicUrl = `${location.href.split('?')[0]}?bundle=${d.id}`;
+    const shareUrlEl = document.getElementById('shareUrl');
+    if (shareUrlEl) shareUrlEl.textContent = publicUrl;
+    setStatus(`✅ 公開しました！ ID: ${d.id}`, 'ok');
+  } catch(e) {
+    setStatus(`❌ 公開失敗: ${e.message}`, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🌐 公開して保存';
+  }
+}
+
+// ---- Share ----
+function buildUrlParam() {
+  const title = document.getElementById('bundleTitle')?.value || '';
+  if (games.length === 0) return '（ゲームを追加するとURLが生成されます）';
+  const data = games.map(g => ({ id: g.appid, n: g.name, p: g.price, d: g.discount, f: g.finalFmt, o: g.origPrice, of: g.origFmt }));
+  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+  return `${location.href.split('?')[0]}?t=${encodeURIComponent(title)}&b=${encoded}`;
+}
+
+function updateShareUrl() {
+  const el = document.getElementById('shareUrl');
+  if (el && !el.textContent.includes('?bundle=')) el.textContent = buildUrlParam();
+}
+
+function copyUrl() {
+  const url = document.getElementById('shareUrl')?.textContent;
+  if (!url || url.startsWith('（')) return;
+  navigator.clipboard.writeText(url).then(() => setStatus('✅ URLをコピーしました！', 'ok'));
+}
+
+function shareTwitter() {
+  const url = document.getElementById('shareUrl')?.textContent;
+  if (!url || url.startsWith('（')) { setStatus('ゲームを追加してからツイートしてください', 'err'); return; }
+  const title = document.getElementById('bundleTitle')?.value || 'Steamおすすめバンドル';
+  window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(title + ' #Steam #SteamSale\n' + url)}`, '_blank');
+}
+
+function resetToEdit() {
+  isViewMode = false; games = []; viewTitle = ''; viewBundleId = '';
+  history.replaceState(null, '', location.pathname);
+  currentTab = 'maker';
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === 'maker'));
+  renderTab('maker');
+}
+
+function setStatus(msg, type = '') {
+  const el = document.getElementById('statusMsg');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'status-msg' + (type ? ' ' + type : '');
+  setTimeout(() => { if(el) { el.textContent = ''; el.className = 'status-msg'; } }, 4000);
+}
+
+// ---- Ranking ----
+function renderRankingShell() {
+  return `
+    <div class="rank-tabs">
+      <button class="rank-tab active" data-rank="alltime">🏆 全期間</button>
+      <button class="rank-tab" data-rank="recent">🔥 直近7日</button>
+    </div>
+    <div id="rankingList"><div class="loading-msg">読み込み中...</div></div>`;
+}
+
+function attachRankingEvents() {
+  document.querySelectorAll('.rank-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.rank-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      loadRanking(btn.dataset.rank);
+    });
+  });
+}
+
+async function loadRanking(type) {
+  const el = document.getElementById('rankingList');
+  if (!el) return;
+  el.innerHTML = '<div class="loading-msg">読み込み中...</div>';
+  try {
+    const r = await fetch(`${PROXY}/ranking/${type}`);
+    const data = await r.json();
+    if (!data.length) { el.innerHTML = '<div class="loading-msg">まだデータがありません。バンドルを公開してランキングを作りましょう！</div>'; return; }
+    el.innerHTML = data.map((g, i) => {
+      const numClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+      const countLabel = type === 'recent' ? `直近7日: ${g.recentCount}回` : `合計: ${g.count}回`;
+      return `<div class="rank-item">
+        <div class="rank-num ${numClass}">${i + 1}</div>
+        <img class="rank-thumb" src="https://cdn.akamai.steamstatic.com/steam/apps/${g.appid}/capsule_sm_120.jpg" alt="" onerror="this.style.visibility='hidden'" />
+        <div class="rank-info">
+          <div class="rank-name">${esc(g.name)}</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+            ${g.discount > 0 ? `<span class="rank-discount">-${g.discount}%</span>` : ''}
+            ${g.finalFmt ? `<span class="rank-price">${g.finalFmt}</span>` : ''}
+          </div>
+        </div>
+        <div class="rank-count">${countLabel}</div>
+        <a class="game-link" href="https://store.steampowered.com/app/${g.appid}/" target="_blank" style="margin-left:8px">↗</a>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    el.innerHTML = `<div class="loading-msg" style="color:var(--danger)">読み込みエラー: ${e.message}</div>`;
+  }
+}
+
+// ---- Bundle list ----
+async function loadBundleList() {
+  const el = document.getElementById('tabContent');
+  try {
+    const r = await fetch(`${PROXY}/bundles/recent`);
+    const data = await r.json();
+    if (!data.length) { el.innerHTML = '<div class="loading-msg">まだ公開されたバンドルがありません</div>'; return; }
+    el.innerHTML = `
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:1rem">最近公開されたバンドル（クリックで閲覧）</p>
+      <div class="bundle-cards">
+        ${data.map(b => `
+          <div class="bundle-card" data-id="${b.id}">
+            <div class="bundle-card-title">${esc(b.title)}</div>
+            <div class="bundle-card-meta">${b.gameCount} タイトル · ${timeAgo(b.createdAt)}</div>
+          </div>`).join('')}
+      </div>`;
+    el.querySelectorAll('.bundle-card').forEach(card => {
+      card.addEventListener('click', () => {
+        history.pushState(null, '', `?bundle=${card.dataset.id}`);
+        loadBundleById(card.dataset.id);
+        currentTab = 'maker';
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === 'maker'));
+      });
+    });
+  } catch(e) {
+    el.innerHTML = `<div class="loading-msg" style="color:var(--danger)">読み込みエラー: ${e.message}</div>`;
+  }
+}
+
+// ---- Helpers ----
+function calcSavings() {
+  let total = 0, origTotal = 0;
+  for (const g of games) {
+    if (g.price != null) total += g.price;
+    origTotal += (g.origPrice && g.origPrice > 0) ? g.origPrice : (g.price || 0);
+  }
+  const savings = origTotal - total;
+  const pct = origTotal > 0 ? Math.round(savings / origTotal * 100) : 0;
+  return { total, origTotal, savings, pct };
+}
+function fmt(yen100) { return Math.round(yen100 / 100).toLocaleString('ja-JP'); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function timeAgo(ts) {
+  const diff = Date.now() - ts;
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'たった今';
+  if (m < 60) return `${m}分前`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}時間前`;
+  return `${Math.floor(h / 24)}日前`;
+}
+
+init();
+</script>
+</body>
+</html>
