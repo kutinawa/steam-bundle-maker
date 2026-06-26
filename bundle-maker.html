@@ -152,6 +152,121 @@ button.btn-twitter { background: linear-gradient(to bottom, #1da1f2, #0d8fd9); b
 .view-badge { display: inline-block; font-size: 11px; padding: 2px 10px; background: rgba(164,208,7,0.1); color: var(--green); border-radius: 2px; margin-bottom: 8px; border: 1px solid rgba(164,208,7,0.3); }
 .back-btn { margin-bottom: 1rem; }
 .loading-msg { text-align: center; padding: 3rem; color: var(--text-dim); }
+
+/* ===== アニメーション ===== */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+.tab-content-enter { animation: fadeIn 0.22s ease forwards; }
+.game-card { animation: slideInLeft 0.18s ease forwards; }
+.game-card:nth-child(1) { animation-delay: 0s; }
+.game-card:nth-child(2) { animation-delay: 0.04s; }
+.game-card:nth-child(3) { animation-delay: 0.08s; }
+.game-card:nth-child(4) { animation-delay: 0.12s; }
+.game-card:nth-child(5) { animation-delay: 0.16s; }
+.game-card:nth-child(6) { animation-delay: 0.20s; }
+.game-card:nth-child(n+7) { animation-delay: 0.24s; }
+.sr-item { animation: fadeIn 0.15s ease forwards; opacity: 0; }
+.sr-item:nth-child(1) { animation-delay: 0s; }
+.sr-item:nth-child(2) { animation-delay: 0.04s; }
+.sr-item:nth-child(3) { animation-delay: 0.08s; }
+.sr-item:nth-child(4) { animation-delay: 0.12s; }
+.sr-item:nth-child(n+5) { animation-delay: 0.16s; }
+.game-capsule { opacity: 0; transition: opacity 0.3s ease; }
+.game-capsule.loaded { opacity: 1; }
+.sr-thumb { opacity: 0; transition: opacity 0.25s ease; }
+.sr-thumb.loaded { opacity: 1; }
+.rank-thumb { opacity: 0; transition: opacity 0.25s ease; }
+.rank-thumb.loaded { opacity: 1; }
+.bundle-card-thumb { opacity: 0; transition: opacity 0.25s ease; }
+.bundle-card-thumb.loaded { opacity: 1; }
+.gacha-result-thumb { opacity: 0; transition: opacity 0.25s ease; }
+.gacha-result-thumb.loaded { opacity: 1; }
+.rank-item { animation: fadeIn 0.18s ease forwards; opacity: 0; }
+.rank-item:nth-child(1) { animation-delay: 0s; }
+.rank-item:nth-child(2) { animation-delay: 0.04s; }
+.rank-item:nth-child(3) { animation-delay: 0.08s; }
+.rank-item:nth-child(4) { animation-delay: 0.12s; }
+.rank-item:nth-child(n+5) { animation-delay: 0.16s; }
+.bundle-card { animation: scaleIn 0.18s ease forwards; opacity: 0; }
+.bundle-card:nth-child(1) { animation-delay: 0s; }
+.bundle-card:nth-child(2) { animation-delay: 0.06s; }
+.bundle-card:nth-child(n+3) { animation-delay: 0.12s; }
+.view-hero { animation: fadeIn 0.25s ease forwards; }
+#afterPublish { animation: scaleIn 0.2s ease forwards; }
+.nav-btn { transition: color 0.15s ease, border-color 0.15s ease; }
+button { transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease; }
+button:active { transform: scale(0.97); }
+
+/* ===== スマホ対応 ===== */
+@media (max-width: 600px) {
+  .container { padding: 1rem; }
+  .header h1 { font-size: 17px; }
+  .nav { gap: 0; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+  .nav-btn { font-size: 12px; padding: 8px 12px; flex-shrink: 0; }
+
+  /* ゲームカード */
+  .game-capsule { width: 100px; height: 56px; }
+  .game-name { font-size: 12px; }
+  .game-body { padding: 0 8px; }
+  .price-discount-badge { font-size: 12px; padding: 4px 6px; min-width: 42px; }
+  .price-final { font-size: 13px; }
+  .price-normal { font-size: 12px; }
+  .price-orig { font-size: 10px; }
+  .game-actions-col { padding: 0 6px; }
+  .game-link { font-size: 11px; }
+
+  /* 検索 */
+  .search-row { gap: 6px; }
+  .search-row button { padding: 9px 10px; font-size: 12px; }
+
+  /* サマリーバー */
+  .summary-bar-inner { gap: 12px; justify-content: flex-start; }
+  .sum-value { font-size: 14px; }
+  .sum-divider { display: none; }
+
+  /* ランキング */
+  .rank-thumb { width: 60px; height: 22px; }
+  .rank-num { font-size: 14px; min-width: 24px; }
+  .rank-name { font-size: 12px; }
+
+  /* バンドルカード */
+  .bundle-card-thumb { width: 100px; height: 56px; }
+  .bundle-card { height: 56px; }
+  .bundle-card-title { font-size: 12px; }
+  .bundle-card-meta { font-size: 10px; }
+
+  /* 共有セクション */
+  .share-url-row { flex-wrap: wrap; }
+  .share-url-row button { flex: 1; font-size: 12px; padding: 8px 10px; }
+
+  /* publish-row */
+  .publish-row { flex-wrap: wrap; gap: 6px; }
+  .publish-row button { width: 100%; }
+  .publish-note { font-size: 11px; }
+
+  /* ビューヒーロー */
+  .view-hero { flex-direction: column; gap: 0.5rem; }
+  .view-hero h2 { font-size: 16px; }
+
+  /* ガチャ */
+  .gacha-budgets { gap: 6px; }
+  .gacha-budget-btn { font-size: 13px; padding: 8px 14px; }
+  .gacha-roll-btn { font-size: 14px; padding: 12px; }
+  .gacha-result-thumb { width: 70px; height: 26px; }
+
+  /* フッター */
+  footer { padding: 1rem; }
+}
 </style>
 </head>
 <body>
@@ -211,6 +326,13 @@ function setupNav() {
 
 function renderTab(tab) {
   const el = document.getElementById('tabContent');
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(6px)';
+  el.style.transition = 'opacity 0.18s ease, transform 0.18s ease';
+  setTimeout(() => {
+    el.style.opacity = '1';
+    el.style.transform = 'translateY(0)';
+  }, 20);
   if (tab === 'maker') {
     el.innerHTML = isViewMode ? renderView() : renderEdit();
     attachMakerEvents();
@@ -282,6 +404,9 @@ function renderEdit() {
     <div class="bundle-list" id="bundleList">${renderBundleItems(false)}</div>
     ${savings > 0 ? `<div class="savings-banner"><span>🤑</span><span>合計 <strong style="color:var(--green-bright)">¥${fmt(savings)} お得！</strong>（平均 ${pct}% オフ）</span></div>` : ''}
     <div class="summary-bar" id="summaryBar"><div class="summary-bar-inner">${renderSummaryInner(total, origTotal, savings)}</div></div>
+    <div style="font-size:11px;color:var(--text-dim);margin-bottom:1rem;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;">
+      ⚠ 表示価格はバンドル作成時点のものです。実際の価格はSteamストアでご確認ください。
+    </div>
     <div class="share-section">
       <h2>🔗 共有</h2>
       <input type="text" class="share-title-input" id="bundleTitle" placeholder="バンドルのタイトル" />
@@ -910,6 +1035,31 @@ function timeAgo(ts) {
 }
 
 let discountMin = 0;
+
+// 画像フェードイン
+function onImgLoad(img) {
+  img.classList.add('loaded');
+}
+function onImgError(img, fallback) {
+  if (fallback && img.src !== fallback) {
+    img.src = fallback;
+  } else {
+    img.style.visibility = 'hidden';
+    img.classList.add('loaded');
+  }
+}
+
+// 画像にonload/onerrorを付与
+function attachImgEvents() {
+  document.querySelectorAll('img').forEach(img => {
+    if (img.complete) {
+      img.classList.add('loaded');
+    } else {
+      img.addEventListener('load', () => img.classList.add('loaded'));
+      img.addEventListener('error', () => { img.style.visibility = 'hidden'; img.classList.add('loaded'); });
+    }
+  });
+}
 
 function toggleUrlAdd() {
   const row = document.getElementById('urlAddRow');
