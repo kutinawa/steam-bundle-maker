@@ -1226,10 +1226,24 @@ async function rollGacha() {
       </div>`;
     });
     html += '</div>';
-    html += `<div class="gacha-total">
-      <span class="gacha-total-label">合計 ${selected.length} タイトル（残り ¥${Math.round(remaining/100).toLocaleString('ja-JP')}）</span>
-      <span class="gacha-total-value">¥${Math.round(totalSpent/100).toLocaleString('ja-JP')} / ¥${gachaBudget.toLocaleString('ja-JP')}</span>
-    </div>`;
+      // 定価合計・割引額を計算
+      let origTotal = 0;
+      for (const g of selected) {
+        const orig = g.parsedPrice && g.discount > 0
+          ? Math.round(g.parsedPrice / (1 - g.discount / 100))
+          : g.parsedPrice || 0;
+        origTotal += orig;
+      }
+      const gachaSavings = origTotal - totalSpent;
+      const gachaPct = origTotal > 0 ? Math.round(gachaSavings / origTotal * 100) : 0;
+
+      html += `<div class="gacha-total">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span class="gacha-total-label">合計 ${selected.length} タイトル（残り ¥${Math.round(remaining/100).toLocaleString('ja-JP')}）</span>
+          ${gachaSavings > 0 ? `<span style="color:var(--discount-text);font-size:13px">定価合計 <span style="text-decoration:line-through;color:var(--text-dim)">¥${Math.round(origTotal/100).toLocaleString('ja-JP')}</span> → <span style="color:var(--green-bright);font-weight:700">-¥${Math.round(gachaSavings/100).toLocaleString('ja-JP')} お得！（${gachaPct}%OFF）</span></span>` : ''}
+        </div>
+        <span class="gacha-total-value">¥${Math.round(totalSpent/100).toLocaleString('ja-JP')} / ¥${gachaBudget.toLocaleString('ja-JP')}</span>
+      </div>`;
     html += `<div style="text-align:center"><button class="green" onclick="rollGacha()">🔄 もう一回</button></div>`;
     resultEl.innerHTML = html;
 
