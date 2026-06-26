@@ -399,9 +399,6 @@ function renderEdit() {
     <div class="bundle-list" id="bundleList">${renderBundleItems(false)}</div>
     ${savings > 0 ? `<div class="savings-banner"><span>🤑</span><span>合計 <strong style="color:var(--green-bright)">¥${fmt(savings)} お得！</strong>（平均 ${pct}% オフ）</span></div>` : ''}
     <div class="summary-bar" id="summaryBar"><div class="summary-bar-inner">${renderSummaryInner(total, origTotal, savings)}</div></div>
-    <div style="font-size:11px;color:var(--text-dim);margin-bottom:1rem;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;">
-      ⚠ 表示価格はバンドル作成時点のものです。実際の価格はSteamストアでご確認ください。
-    </div>
     <div class="share-section">
       <h2>🔗 共有</h2>
       <input type="text" class="share-title-input" id="bundleTitle" placeholder="バンドルのタイトル" />
@@ -979,16 +976,26 @@ async function loadBundleList() {
     const data = await r.json();
     if (!data.length) { el.innerHTML = '<div class="loading-msg">まだ公開されたバンドルがありません</div>'; return; }
     el.innerHTML = `
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:1rem;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;">
+        ⚠ 表示価格はバンドル作成時点のものです。実際の価格はSteamストアでご確認ください。
+      </div>
       <p style="font-size:12px;color:var(--text-dim);margin-bottom:1rem">最近公開されたバンドル（クリックで閲覧）</p>
       <div class="bundle-cards">
         ${data.map(b => {
           const thumb = b.thumbAppid ? `https://steamcdn-a.akamaihd.net/steam/apps/${b.thumbAppid}/header.jpg` : '';
+          const hasSavings = b.savingsPct > 0 && b.totalFinal > 0;
+          const priceTag = hasSavings
+            ? `<span style="background:var(--discount-bg);color:var(--discount-text);font-size:10px;font-weight:700;padding:1px 5px;border-radius:2px;margin-right:4px">-${b.savingsPct}%</span><span style="color:var(--green-bright);font-size:12px;font-weight:700">¥${Math.round(b.totalFinal/100).toLocaleString('ja-JP')}</span>`
+            : b.totalFinal > 0 ? `<span style="color:var(--text-muted);font-size:12px">¥${Math.round(b.totalFinal/100).toLocaleString('ja-JP')}</span>` : '';
           return `<div class="bundle-card" data-id="${b.id}">
             ${thumb ? `<img class="bundle-card-thumb" style="opacity:0" src="${thumb}" alt="" onload="this.style.opacity='1'" onerror="this.style.display='none'" />` : ''}
             <div class="bundle-card-body">
               <div class="bundle-card-title">${esc(b.title)}</div>
               ${b.comment ? `<div class="bundle-card-comment">${esc(b.comment)}</div>` : ''}
-              <div class="bundle-card-meta">${b.gameCount} タイトル · ${timeAgo(b.createdAt)}</div>
+              <div class="bundle-card-meta" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <span>${b.gameCount} タイトル · ${timeAgo(b.createdAt)}</span>
+                ${priceTag}
+              </div>
             </div>
           </div>`;
         }).join('')}
