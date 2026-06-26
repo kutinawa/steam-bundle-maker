@@ -502,6 +502,7 @@ function reRenderBundle() {
 async function publishBundle() {
   if (games.length === 0) { setStatus('ゲームを追加してから公開してください', 'err'); return; }
   const title = document.getElementById('bundleTitle')?.value || '無題のバンドル';
+  const comment = document.getElementById('bundleComment')?.value || '';
   const btn = document.getElementById('publishBtn');
   btn.disabled = true;
   btn.textContent = '公開中...';
@@ -581,7 +582,7 @@ async function generateBundleImage() {
   const hasMore = games.length > 9;
   const cols = Math.min(3, displayGames.length);
   const rows = Math.ceil(displayGames.length / cols);
-  const thumbW = 220, thumbH = 100;
+  const thumbW = 400, thumbH = 180;
   const padding = 4;
   const headerH = 72;
   const footerH = hasMore ? 32 : 24;
