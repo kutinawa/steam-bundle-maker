@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Steam Bundle Maker</title>
+<title>My Steam Bundle</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -126,6 +126,23 @@ button.btn-twitter { background: linear-gradient(to bottom, #1da1f2, #0d8fd9); b
 .bundle-card-title { font-weight: 600; color: var(--text-bright); font-size: 13px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bundle-card-meta { font-size: 11px; color: var(--text-dim); }
 
+/* Gacha */
+.gacha-budgets { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:1.5rem; }
+.gacha-budget-btn { font-size:14px; padding:10px 22px; border-radius:3px; }
+.gacha-budget-btn.selected { background:linear-gradient(to bottom, var(--steam-btn), #3a8a3e); border-color:#2d6b30; color:#fff; }
+.gacha-roll-btn { font-size:16px; padding:14px 40px; border-radius:3px; width:100%; margin-bottom:1.5rem; background:linear-gradient(to bottom,#c94f27,#a33a1a); border-color:#8b2e12; }
+.gacha-roll-btn:hover { background:linear-gradient(to bottom,#d95f37,#b34a2a); }
+.gacha-roll-btn:disabled { opacity:0.5; cursor:not-allowed; }
+.gacha-result { display:flex; flex-direction:column; gap:2px; margin-bottom:1rem; }
+.gacha-result-item { display:flex; align-items:center; gap:12px; background:var(--surface2); border:1px solid var(--border); padding:8px 12px; animation: fadeSlide 0.3s ease forwards; opacity:0; }
+@keyframes fadeSlide { from { opacity:0; transform:translateX(-10px); } to { opacity:1; transform:none; } }
+.gacha-result-thumb { width:92px; height:34px; object-fit:cover; border-radius:2px; background:var(--surface); flex-shrink:0; }
+.gacha-result-name { flex:1; font-weight:600; color:var(--text-bright); font-size:13px; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.gacha-result-price { white-space:nowrap; }
+.gacha-total { background:var(--surface); border:1px solid var(--border2); border-radius:3px; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }
+.gacha-total-label { font-size:13px; color:var(--text-muted); }
+.gacha-total-value { font-size:18px; font-weight:700; color:var(--green-bright); }
+.gacha-empty { text-align:center; padding:2rem; color:var(--text-dim); font-size:13px; }
 /* View mode */
 .view-hero { background: var(--surface); border: 1px solid var(--border2); border-radius: 3px; padding: 1.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .view-hero h2 { font-size: 22px; font-weight: 700; color: var(--text-bright); margin-bottom: 6px; }
@@ -137,13 +154,14 @@ button.btn-twitter { background: linear-gradient(to bottom, #1da1f2, #0d8fd9); b
 <body>
 <div class="container">
   <div class="header">
-    <h1>🎮 Steam Bundle Maker</h1>
-    <p>好きなゲームをまとめてURLで共有 — 俺バンドル</p>
+    <h1>🎮 My Steam Bundle</h1>
+    
   </div>
   <nav class="nav">
     <button class="nav-btn active" data-tab="maker">🛠 バンドルを作る</button>
     <button class="nav-btn" data-tab="ranking">🏆 ランキング</button>
     <button class="nav-btn" data-tab="bundles">📦 みんなのバンドル</button>
+    <button class="nav-btn" data-tab="gacha">🎰 ガチャ</button>
   </nav>
   <div id="tabContent"></div>
 </div>
@@ -197,6 +215,9 @@ function renderTab(tab) {
     el.innerHTML = renderRankingShell();
     attachRankingEvents();
     loadRanking('alltime');
+  } else if (tab === 'gacha') {
+    el.innerHTML = renderGachaShell();
+    attachGachaEvents();
   } else if (tab === 'bundles') {
     el.innerHTML = `<div class="loading-msg">読み込み中...</div>`;
     loadBundleList();
@@ -234,7 +255,7 @@ function renderEdit() {
   const { total, origTotal, savings, pct } = calcSavings();
   return `
     <div class="search-row">
-      <input type="text" id="searchInput" placeholder="ゲーム名で検索 (例: Far Cry, Hollow Knight...)" autocomplete="off" />
+      <input type="text" id="searchInput" placeholder="ゲーム名で検索" autocomplete="off" />
       <button id="searchBtn">🔍 検索</button>
     </div>
     <div class="hint" id="searchHint"></div>
@@ -248,16 +269,36 @@ function renderEdit() {
     <div class="summary-bar" id="summaryBar"><div class="summary-bar-inner">${renderSummaryInner(total, origTotal, savings)}</div></div>
     <div class="share-section">
       <h2>🔗 共有</h2>
-      <input type="text" class="share-title-input" id="bundleTitle" placeholder="バンドルのタイトル (例: 夏セールRPGおすすめ)" />
-      <div class="share-url-row">
-        <div class="share-url" id="shareUrl">${buildUrlParam()}</div>
-        <button id="copyBtn">📋 コピー</button>
-        <button class="btn-twitter" id="tweetBtn">🐦 ツイート</button>
+      <input type="text" class="share-title-input" id="bundleTitle" placeholder="バンドルのタイトル" />
+      <textarea id="bundleComment" maxlength="100" placeholder="一言コメント（100文字まで）" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:3px;padding:9px 12px;color:var(--text-bright);font-size:13px;resize:vertical;min-height:60px;margin-bottom:10px;font-family:inherit;outline:none;" oninput="updateCharCount()"></textarea>
+      <div id="charCount" style="font-size:11px;color:var(--text-dim);text-align:right;margin-top:-8px;margin-bottom:10px;">0 / 100</div>
+
+      <!-- 公開前 -->
+      <div id="beforePublish">
+        <div class="publish-row" style="margin-bottom:8px">
+          <button id="genImageBtn" onclick="generateAndShareImage()" style="flex:1">🖼 画像を生成（最大9本）</button>
+        </div>
+        <div class="publish-row">
+          <span class="publish-note">公開するとランキングに反映され、みんなのバンドル一覧に載ります</span>
+          <button class="green" id="publishBtn">🌐 保存して公開</button>
+        </div>
       </div>
-      <div class="publish-row">
-        <span class="publish-note">公開するとランキングに反映され、みんなのバンドル一覧に載ります</span>
-        <button class="green" id="publishBtn">🌐 公開して保存</button>
+
+      <!-- 公開後 -->
+      <div id="afterPublish" style="display:none">
+        <div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.3);border-radius:3px;padding:10px 14px;margin-bottom:10px;font-size:13px;color:var(--green)">
+          ✅ 公開しました！下のURLを共有してください
+        </div>
+        <div class="share-url-row" style="margin-bottom:8px">
+          <div class="share-url" id="shareUrl">（公開するとURLが発行されます）</div>
+          <button id="copyBtn">📋 コピー</button>
+          <button class="btn-twitter" id="tweetBtn">📤 共有</button>
+        </div>
+        <div class="publish-row">
+          <button id="genImageBtn" onclick="generateAndShareImage()" style="flex:1">🖼 画像を生成（最大9本）</button>
+        </div>
       </div>
+
       <div class="status-msg" id="statusMsg"></div>
     </div>`;
 }
@@ -266,13 +307,18 @@ function renderView() {
   const { total, origTotal, savings, pct } = calcSavings();
   return `
     <button class="back-btn" id="backBtn">← 自分のバンドルを作る</button>
-    <div class="view-hero">
-      <div>
+    <div class="view-hero" style="position:relative;overflow:hidden;min-height:120px;">
+      ${games.length > 0 ? `
+        <img src="https://cdn.akamai.steamstatic.com/steam/apps/${games[0].appid}/header.jpg"
+          style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;opacity:0.18;filter:blur(2px);transform:scale(1.05);"
+          onerror="this.style.display='none'" />
+      ` : ''}
+      <div style="position:relative;z-index:1;flex:1">
         <div class="view-badge">🎮 Steamバンドル</div>
         <h2>${esc(viewTitle || 'おすすめバンドル')}</h2>
         <p>${games.length} タイトル収録</p>
       </div>
-      <div style="text-align:right">
+      <div style="position:relative;z-index:1;text-align:right">
         ${pct > 0 ? `<div style="font-size:28px;font-weight:700;color:var(--discount-text);background:var(--discount-bg);padding:8px 16px;border-radius:3px;display:inline-block">-${pct}%</div>` : ''}
         ${origTotal > 0 ? `<div style="font-size:13px;color:var(--text-dim);text-decoration:line-through;margin-top:4px">¥${fmt(origTotal)}</div>` : ''}
         <div style="font-size:24px;font-weight:700;color:var(--green-bright)">¥${fmt(total)}</div>
@@ -358,6 +404,7 @@ async function doSearch() {
     if (!d.items || d.items.length === 0) {
       res.innerHTML = `<div class="sr-item"><span style="color:var(--text-dim)">見つかりませんでした</span></div>`; return;
     }
+    // 割引率フィルター適用（価格取得後に適用するため一旦全件表示、取得後にhide）
     const items = d.items.slice(0, 10);
     res.innerHTML = items.map(item => `
       <div class="sr-item" data-appid="${item.id}" data-name="${esc(item.name)}">
@@ -399,6 +446,13 @@ async function fetchPrice(appid, updateResult = false) {
 function applyResultPrice(appid, info) {
   const el = document.getElementById(`srp-${appid}`);
   if (!el) return;
+  // 割引率フィルター適用
+  const row = el.closest('.sr-item');
+  if (row && discountMin > 0 && (info.discount || 0) < discountMin) {
+    row.style.display = 'none';
+  } else if (row) {
+    row.style.display = '';
+  }
   if (info.discount > 0) {
     el.innerHTML = `<span class="sr-discount">-${info.discount}%</span><div style="display:flex;flex-direction:column;align-items:flex-end"><span class="sr-orig">${info.origFmt}</span><span class="sr-final">${info.finalFmt}</span></div>`;
   } else {
@@ -435,7 +489,13 @@ function reRenderBundle() {
   const { total, origTotal, savings } = calcSavings();
   const sb = document.getElementById('summaryBar');
   if (sb) sb.querySelector('.summary-bar-inner').innerHTML = renderSummaryInner(total, origTotal, savings);
-  updateShareUrl();
+  // ゲームが変更されたら公開前状態に戻す
+  const before = document.getElementById('beforePublish');
+  const after = document.getElementById('afterPublish');
+  if (before) before.style.display = '';
+  if (after) after.style.display = 'none';
+  const shareUrlEl = document.getElementById('shareUrl');
+  if (shareUrlEl) shareUrlEl.textContent = '（公開するとURLが発行されます）';
 }
 
 // ---- Publish ----
@@ -449,19 +509,24 @@ async function publishBundle() {
     const r = await fetch(`${PROXY}/bundle/save`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, games }),
+      body: JSON.stringify({ title, comment, games }),
     });
     const d = await r.json();
     if (d.error) throw new Error(d.error);
     const publicUrl = `${location.href.split('?')[0]}?bundle=${d.id}`;
     const shareUrlEl = document.getElementById('shareUrl');
     if (shareUrlEl) shareUrlEl.textContent = publicUrl;
-    setStatus(`✅ 公開しました！ ID: ${d.id}`, 'ok');
+    // 公開前後UI切り替え
+    const before = document.getElementById('beforePublish');
+    const after = document.getElementById('afterPublish');
+    if (before) before.style.display = 'none';
+    if (after) after.style.display = '';
+    setStatus('', '');
   } catch(e) {
     setStatus(`❌ 公開失敗: ${e.message}`, 'err');
   } finally {
     btn.disabled = false;
-    btn.textContent = '🌐 公開して保存';
+    btn.textContent = '🌐 保存して公開';
   }
 }
 
@@ -485,11 +550,187 @@ function copyUrl() {
   navigator.clipboard.writeText(url).then(() => setStatus('✅ URLをコピーしました！', 'ok'));
 }
 
-function shareTwitter() {
+async function shareTwitter() {
   const url = document.getElementById('shareUrl')?.textContent;
   if (!url || url.startsWith('（')) { setStatus('ゲームを追加してからツイートしてください', 'err'); return; }
-  const title = document.getElementById('bundleTitle')?.value || 'Steamおすすめバンドル';
-  window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(title + ' #Steam #SteamSale\n' + url)}`, '_blank');
+  const { total, origTotal, savings, pct } = calcSavings();
+  const priceText = savings > 0
+    ? `¥${fmt(origTotal)} → ¥${fmt(total)}（${pct}%OFF / -¥${fmt(savings)}）`
+    : `¥${fmt(total)}`;
+  const text = `おすすめゲームをまとめました！ #mysteambundle\n${priceText}\n`;
+  window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
+}
+
+async function generateAndShareImage() {
+  if (games.length === 0) { setStatus('ゲームを追加してください', 'err'); return; }
+  const btn = document.getElementById('genImageBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ 生成中...';
+  try {
+    await generateBundleImage();
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🖼 画像を生成してダウンロード';
+  }
+}
+
+async function generateBundleImage() {
+  const title = document.getElementById('bundleTitle')?.value || 'My Steam Bundle';
+  const { total, origTotal, savings, pct } = calcSavings();
+  const displayGames = games.slice(0, 9);
+  const hasMore = games.length > 9;
+  const cols = Math.min(3, displayGames.length);
+  const rows = Math.ceil(displayGames.length / cols);
+  const thumbW = 220, thumbH = 100;
+  const padding = 4;
+  const headerH = 72;
+  const footerH = hasMore ? 32 : 24;
+  const canvasW = cols * (thumbW + padding) - padding;
+  const canvasH = headerH + rows * (thumbH + padding) - padding + footerH;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = canvasW;
+  canvas.height = canvasH;
+  const ctx = canvas.getContext('2d');
+
+  // 背景
+  ctx.fillStyle = '#1b2838';
+  ctx.fillRect(0, 0, canvasW, canvasH);
+
+  // ヘッダー背景
+  ctx.fillStyle = '#171d25';
+  ctx.fillRect(0, 0, canvasW, headerH);
+
+  // ヘッダー左ライン
+  ctx.fillStyle = '#66c0f4';
+  ctx.fillRect(0, 0, 3, headerH);
+
+  // タイトル
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 18px sans-serif';
+  ctx.fillText(title, 14, 26);
+
+  // サブテキスト（本数）
+  ctx.fillStyle = '#8ba3b8';
+  ctx.font = '13px sans-serif';
+  ctx.fillText(`${games.length}タイトル`, 14, 46);
+
+  // 価格情報（右寄せ）
+  if (savings > 0) {
+    // 割引率バッジ
+    const badge = `-${pct}%OFF`;
+    ctx.font = 'bold 15px sans-serif';
+    const bw = ctx.measureText(badge).width + 16;
+    ctx.fillStyle = '#4c6b22';
+    ctx.fillRect(canvasW - bw - 130, 10, bw, 26);
+    ctx.fillStyle = '#a4d007';
+    ctx.fillText(badge, canvasW - bw - 122, 27);
+
+    // 定価（打ち消し線）
+    ctx.fillStyle = '#556b7d';
+    ctx.font = '11px sans-serif';
+    const origText = `¥${fmt(origTotal)}`;
+    const origW = ctx.measureText(origText).width;
+    ctx.fillText(origText, canvasW - origW - 10, 22);
+    ctx.beginPath();
+    ctx.strokeStyle = '#556b7d';
+    ctx.lineWidth = 1;
+    ctx.moveTo(canvasW - origW - 10, 18);
+    ctx.lineTo(canvasW - 10, 18);
+    ctx.stroke();
+
+    // セール価格
+    ctx.fillStyle = '#beee11';
+    ctx.font = 'bold 20px sans-serif';
+    const finalText = `¥${fmt(total)}`;
+    const finalW = ctx.measureText(finalText).width;
+    ctx.fillText(finalText, canvasW - finalW - 10, 58);
+
+    // 割引額
+    ctx.fillStyle = '#a4d007';
+    ctx.font = '12px sans-serif';
+    const saveText = `-¥${fmt(savings)}`;
+    const saveW = ctx.measureText(saveText).width;
+    ctx.fillText(saveText, canvasW - saveW - 10, 72);
+  } else {
+    ctx.fillStyle = '#c6d4df';
+    ctx.font = 'bold 18px sans-serif';
+    const finalText = `¥${fmt(total)}`;
+    const finalW = ctx.measureText(finalText).width;
+    ctx.fillText(finalText, canvasW - finalW - 10, 50);
+  }
+
+  // サムネイル
+  const loadImg = (src) => new Promise((res) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => res(img);
+    img.onerror = () => res(null);
+    img.src = src;
+  });
+
+  for (let i = 0; i < displayGames.length; i++) {
+    const g = displayGames[i];
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const x = col * (thumbW + padding);
+    const y = headerH + row * (thumbH + padding);
+
+    ctx.fillStyle = '#2a3f5a';
+    ctx.fillRect(x, y, thumbW, thumbH);
+
+    const img = await loadImg(`https://cdn.akamai.steamstatic.com/steam/apps/${g.appid}/header.jpg`);
+    if (img) ctx.drawImage(img, x, y, thumbW, thumbH);
+
+    // 暗いグラデーション（バッジ可読性向上）
+    if (g.discount > 0) {
+      const grad = ctx.createLinearGradient(x, y + thumbH - 36, x, y + thumbH);
+      grad.addColorStop(0, 'rgba(0,0,0,0)');
+      grad.addColorStop(1, 'rgba(0,0,0,0.7)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(x, y + thumbH - 36, thumbW, 36);
+
+      // 割引率バッジ
+      ctx.font = 'bold 15px sans-serif';
+      const dText = `-${g.discount}%`;
+      const dW = ctx.measureText(dText).width + 12;
+      ctx.fillStyle = '#4c6b22';
+      ctx.fillRect(x + 4, y + thumbH - 26, dW, 22);
+      ctx.fillStyle = '#a4d007';
+      ctx.fillText(dText, x + 10, y + thumbH - 10);
+
+      // セール価格
+      if (g.finalFmt) {
+        ctx.fillStyle = '#beee11';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText(g.finalFmt, x + dW + 10, y + thumbH - 10);
+      }
+    }
+  }
+
+  // フッター
+  const footerY = canvasH - footerH;
+  ctx.fillStyle = '#171d25';
+  ctx.fillRect(0, footerY, canvasW, footerH);
+
+  if (hasMore) {
+    ctx.fillStyle = '#8ba3b8';
+    ctx.font = '13px sans-serif';
+    ctx.fillText(`+ ${games.length - 9} more titles`, 14, footerY + 20);
+  }
+
+  // 透かし
+  ctx.fillStyle = 'rgba(102,192,244,0.6)';
+  ctx.font = 'bold 11px sans-serif';
+  const wText = 'My Steam Bundle';
+  const wW = ctx.measureText(wText).width;
+  ctx.fillText(wText, canvasW - wW - 10, footerY + 20);
+
+  const a = document.createElement('a');
+  a.download = 'my-steam-bundle.png';
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+  setStatus('✅ 画像をダウンロードしました！', 'ok');
 }
 
 function resetToEdit() {
@@ -568,11 +809,17 @@ async function loadBundleList() {
     el.innerHTML = `
       <p style="font-size:12px;color:var(--text-dim);margin-bottom:1rem">最近公開されたバンドル（クリックで閲覧）</p>
       <div class="bundle-cards">
-        ${data.map(b => `
-          <div class="bundle-card" data-id="${b.id}">
-            <div class="bundle-card-title">${esc(b.title)}</div>
-            <div class="bundle-card-meta">${b.gameCount} タイトル · ${timeAgo(b.createdAt)}</div>
-          </div>`).join('')}
+        ${data.map(b => {
+          const thumb = b.thumbAppid ? `https://cdn.akamai.steamstatic.com/steam/apps/${b.thumbAppid}/header.jpg` : '';
+          return `<div class="bundle-card" data-id="${b.id}">
+            ${thumb ? `<img class="bundle-card-thumb" src="${thumb}" alt="" onerror="this.style.display='none'" />` : ''}
+            <div class="bundle-card-body">
+              <div class="bundle-card-title">${esc(b.title)}</div>
+              ${b.comment ? `<div class="bundle-card-comment">${esc(b.comment)}</div>` : ''}
+              <div class="bundle-card-meta">${b.gameCount} タイトル · ${timeAgo(b.createdAt)}</div>
+            </div>
+          </div>`;
+        }).join('')}
       </div>`;
     el.querySelectorAll('.bundle-card').forEach(card => {
       card.addEventListener('click', () => {
@@ -610,7 +857,136 @@ function timeAgo(ts) {
   return `${Math.floor(h / 24)}日前`;
 }
 
+let discountMin = 0;
+
+let gachaBudget = 3000;
+
+function renderGachaShell() {
+  return `
+    <div style="margin-bottom:1rem">
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:0.75rem">予算を選んでガチャを回すと、ランキング登録済みのゲームからランダムで予算ギリギリまで選ばれます</p>
+      <div class="gacha-budgets" id="gachaBudgets">
+        <button class="gacha-budget-btn" data-budget="1000" onclick="selectBudget(this,1000)">¥1,000以内</button>
+        <button class="gacha-budget-btn selected" data-budget="3000" onclick="selectBudget(this,3000)">¥3,000以内</button>
+        <button class="gacha-budget-btn" data-budget="5000" onclick="selectBudget(this,5000)">¥5,000以内</button>
+        <button class="gacha-budget-btn" data-budget="10000" onclick="selectBudget(this,10000)">¥10,000以内</button>
+      </div>
+      <button class="gacha-roll-btn" id="gachaBtn" onclick="rollGacha()">🎰 ガチャを回す！</button>
+    </div>
+    <div id="gachaResult"></div>
+  `;
+}
+
+function attachGachaEvents() {}
+
+function selectBudget(btn, budget) {
+  gachaBudget = budget;
+  document.querySelectorAll('.gacha-budget-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+async function rollGacha() {
+  const btn = document.getElementById('gachaBtn');
+  const resultEl = document.getElementById('gachaResult');
+  btn.disabled = true;
+  btn.textContent = '🎲 抽選中...';
+  resultEl.innerHTML = '<div class="gacha-empty">ゲームを抽選中...</div>';
+
+  try {
+    // ランキングからゲームプール取得
+    const r = await fetch(PROXY + '/ranking/alltime');
+    const allGames = await r.json();
+
+    // 価格が0より大きくbudget以内のゲームだけ対象
+    const budget = gachaBudget * 100; // センt単位
+    const pool = allGames.filter(g => g.finalFmt && g.discount > 0);
+
+    // 価格が未取得のものはWorkerのfinalFmtから円数値を推定
+    // finalFmt例: "¥ 528" → 52800 (cent)
+    function parsePrice(g) {
+      if (!g.finalFmt) return null;
+      const m = g.finalFmt.replace(/[¥,￥\s]/g, '');
+      const n = parseInt(m);
+      return isNaN(n) ? null : n * 100;
+    }
+
+    const pricedPool = pool.map(g => ({ ...g, parsedPrice: parsePrice(g) })).filter(g => g.parsedPrice && g.parsedPrice > 0 && g.parsedPrice <= budget);
+
+    if (pricedPool.length === 0) {
+      resultEl.innerHTML = '<div class="gacha-empty">この予算内でセール中のゲームがランキングにありません。<br>バンドルを公開してゲームを登録しましょう！</div>';
+      return;
+    }
+
+    // シャッフルして予算ギリギリまで詰める
+    const shuffled = [...pricedPool].sort(() => Math.random() - 0.5);
+    const selected = [];
+    let remaining = budget;
+
+    for (const g of shuffled) {
+      if (g.parsedPrice <= remaining) {
+        selected.push(g);
+        remaining -= g.parsedPrice;
+      }
+      if (remaining <= 0) break;
+    }
+
+    if (selected.length === 0) {
+      resultEl.innerHTML = '<div class="gacha-empty">予算内に収まるゲームが見つかりませんでした</div>';
+      return;
+    }
+
+    const totalSpent = budget - remaining;
+
+    // 結果表示
+    let html = '<div class="gacha-result">';
+    selected.forEach((g, i) => {
+      const thumb = `https://cdn.akamai.steamstatic.com/steam/apps/${g.appid}/capsule_sm_120.jpg`;
+      const priceHtml = g.discount > 0
+        ? `<span class="sr-discount" style="font-size:12px">-${g.discount}%</span> <span class="price-final" style="font-size:14px">${g.finalFmt}</span>`
+        : `<span class="price-normal">${g.finalFmt}</span>`;
+      html += `<div class="gacha-result-item" style="animation-delay:${i * 0.08}s">
+        <img class="gacha-result-thumb" src="${thumb}" alt="" onerror="this.style.visibility='hidden'" />
+        <span class="gacha-result-name">${esc(g.name)}</span>
+        <div class="gacha-result-price">${priceHtml}</div>
+        <a class="game-link" href="https://store.steampowered.com/app/${g.appid}/" target="_blank" style="margin-left:8px">↗</a>
+      </div>`;
+    });
+    html += '</div>';
+    html += `<div class="gacha-total">
+      <span class="gacha-total-label">合計 ${selected.length} タイトル（残り ¥${Math.round(remaining/100).toLocaleString('ja-JP')}）</span>
+      <span class="gacha-total-value">¥${Math.round(totalSpent/100).toLocaleString('ja-JP')} / ¥${gachaBudget.toLocaleString('ja-JP')}</span>
+    </div>`;
+    html += `<div style="text-align:center"><button class="green" onclick="rollGacha()">🔄 もう一回</button></div>`;
+    resultEl.innerHTML = html;
+
+  } catch(e) {
+    resultEl.innerHTML = `<div class="gacha-empty" style="color:var(--danger)">エラー: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🎰 ガチャを回す！';
+  }
+}
+
+function updateCharCount() {
+  const ta = document.getElementById('bundleComment');
+  const cc = document.getElementById('charCount');
+  if (ta && cc) cc.textContent = `${ta.value.length} / 100`;
+}
+
+
+
 init();
 </script>
+<footer style="margin-top:3rem;padding:1.5rem;border-top:1px solid var(--border);text-align:center;">
+  <p style="font-size:13px;color:var(--text-dim);margin-bottom:10px;">My Steam Bundle</p>
+  <p style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">製作者: Kutinawa</p>
+  <a href="https://x.com/Kutinawa_VGamer" target="_blank"
+    style="display:inline-flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border2);border-radius:4px;padding:8px 18px;color:var(--text-muted);text-decoration:none;font-size:13px;transition:border-color 0.15s;"
+    onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text-bright)'"
+    onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text-muted)'">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.737-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+    @Kutinawa_VGamer
+  </a>
+</footer>
 </body>
 </html>
