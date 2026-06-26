@@ -334,7 +334,7 @@ function renderView() {
 function renderBundleItems(viewMode) {
   if (games.length === 0) return '<div class="bundle-empty">ゲームを検索して追加してください</div>';
   return games.map(g => {
-    const capsule = `https://cdn.akamai.steamstatic.com/steam/apps/${g.appid}/header.jpg`;
+    const capsule = g.headerImage || `https://cdn.akamai.steamstatic.com/steam/apps/${g.appid}/header.jpg`;
     let priceHtml = g.price === null
       ? `<span class="price-loading">取得中...</span>`
       : g.discount > 0
@@ -347,7 +347,7 @@ function renderBundleItems(viewMode) {
         }</span></div>`;
     return `<div class="game-card" data-appid="${g.appid}">
       <img class="game-capsule" src="${capsule}" alt="${esc(g.name)}"
-        onerror="if(this.src.includes('header.jpg')){this.src='https://cdn.akamai.steamstatic.com/steam/apps/${g.appid}/capsule_231x87.jpg'}else{this.style.visibility='hidden'}" />
+        onerror="this.src=this.src.includes('header.jpg')?'https://cdn.akamai.steamstatic.com/steam/apps/${g.appid}/capsule_231x87.jpg':'';this.onerror=null;" />
       <div class="game-body"><div class="game-name">${esc(g.name)}</div></div>
       <div class="game-price-block">${priceHtml}</div>
       <div class="game-actions-col">
@@ -450,9 +450,10 @@ async function fetchPrice(appid, updateResult = false) {
     const r = await fetch(`${PROXY}/appdetails?appids=${appid}&cc=jp`);
     const d = await r.json();
     const po = d[String(appid)]?.data?.price_overview;
+    const headerImage = d[String(appid)]?.data?.header_image || null;
     const info = po
-      ? { price: po.final, origPrice: po.initial, discount: po.discount_percent, finalFmt: po.final_formatted, origFmt: po.initial_formatted, isFree: false }
-      : { price: null, origPrice: 0, discount: 0, finalFmt: null, origFmt: '', isFree: false };
+      ? { price: po.final, origPrice: po.initial, discount: po.discount_percent, finalFmt: po.final_formatted, origFmt: po.initial_formatted, isFree: false, headerImage }
+      : { price: null, origPrice: 0, discount: 0, finalFmt: null, origFmt: '', isFree: false, headerImage };
     priceCache[appid] = info;
     if (updateResult) applyResultPrice(appid, info);
     const g = games.find(g => g.appid === appid);
@@ -494,7 +495,7 @@ function applyResultPrice(appid, info) {
 function selectGame(appid, name) {
   if (games.find(g => g.appid === appid)) { setStatus('このゲームはすでに追加されています'); return; }
   const pc = (priceCache[appid] && priceCache[appid] !== 'pending') ? priceCache[appid] : null;
-  games.push({ appid, name, price: pc ? pc.price : null, discount: pc ? pc.discount : 0, finalFmt: pc ? pc.finalFmt : null, origPrice: pc ? pc.origPrice : null, origFmt: pc ? pc.origFmt : null });
+  games.push({ appid, name, price: pc ? pc.price : null, discount: pc ? pc.discount : 0, finalFmt: pc ? pc.finalFmt : null, origPrice: pc ? pc.origPrice : null, origFmt: pc ? pc.origFmt : null, headerImage: pc ? pc.headerImage : null });
   document.getElementById('searchResults').style.display = 'none';
   document.getElementById('searchInput').value = '';
   document.getElementById('searchHint').textContent = '';
