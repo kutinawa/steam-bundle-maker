@@ -181,16 +181,11 @@ button.btn-twitter { background: linear-gradient(to bottom, #1da1f2, #0d8fd9); b
 .sr-item:nth-child(3) { animation-delay: 0.08s; }
 .sr-item:nth-child(4) { animation-delay: 0.12s; }
 .sr-item:nth-child(n+5) { animation-delay: 0.16s; }
-.game-capsule { opacity: 0; transition: opacity 0.3s ease; }
-.game-capsule.loaded { opacity: 1; }
-.sr-thumb { opacity: 0; transition: opacity 0.25s ease; }
-.sr-thumb.loaded { opacity: 1; }
-.rank-thumb { opacity: 0; transition: opacity 0.25s ease; }
-.rank-thumb.loaded { opacity: 1; }
-.bundle-card-thumb { opacity: 0; transition: opacity 0.25s ease; }
-.bundle-card-thumb.loaded { opacity: 1; }
-.gacha-result-thumb { opacity: 0; transition: opacity 0.25s ease; }
-.gacha-result-thumb.loaded { opacity: 1; }
+.game-capsule { transition: opacity 0.3s ease; }
+.sr-thumb { transition: opacity 0.25s ease; }
+.rank-thumb { transition: opacity 0.25s ease; }
+.bundle-card-thumb { transition: opacity 0.25s ease; }
+.gacha-result-thumb { transition: opacity 0.25s ease; }
 .rank-item { animation: fadeIn 0.18s ease forwards; opacity: 0; }
 .rank-item:nth-child(1) { animation-delay: 0s; }
 .rank-item:nth-child(2) { animation-delay: 0.04s; }
@@ -486,7 +481,7 @@ function renderBundleItems(viewMode) {
           '¥'+fmt(g.price)
         }</span></div>`;
     return `<div class="game-card" data-appid="${g.appid}">
-      <img class="game-capsule" src="${capsule}" alt="${esc(g.name)}"
+      <img class="game-capsule" style="opacity:0" src="${capsule}" onload="this.style.opacity='1'" alt="${esc(g.name)}"
         onerror="this.src=this.src.includes('header.jpg')?'https://steamcdn-a.akamaihd.net/steam/apps/${g.appid}/capsule_231x87.jpg':'';this.onerror=null;" />
       <div class="game-body"><div class="game-name">${esc(g.name)}</div></div>
       <div class="game-price-block">${priceHtml}</div>
@@ -564,7 +559,7 @@ async function doSearch() {
     const items = filtered.slice(0, 10);
     res.innerHTML = items.map(item => `
       <div class="sr-item" data-appid="${item.id}" data-name="${esc(item.name)}">
-        <img class="sr-thumb" src="https://steamcdn-a.akamaihd.net/steam/apps/${item.id}/capsule_sm_120.jpg" alt="" onerror="this.style.visibility='hidden'" />
+        <img class="sr-thumb" style="opacity:0" src="https://steamcdn-a.akamaihd.net/steam/apps/${item.id}/capsule_sm_120.jpg" alt="" onload="this.style.opacity='1'" onerror="this.style.visibility='hidden'" />
         <div class="sr-info"><div class="sr-name">${esc(item.name)}</div></div>
         <div class="sr-price-wrap" id="srp-${item.id}"><span class="sr-normal" style="color:var(--text-dim)">取得中...</span></div>
         <div class="sr-add">＋</div>
@@ -959,7 +954,7 @@ async function loadRanking(type) {
       const countLabel = type === 'recent' ? `直近7日: ${g.recentCount}回` : `合計: ${g.count}回`;
       return `<div class="rank-item">
         <div class="rank-num ${numClass}">${i + 1}</div>
-        <img class="rank-thumb" src="https://steamcdn-a.akamaihd.net/steam/apps/${g.appid}/capsule_sm_120.jpg" alt="" onerror="this.style.visibility='hidden'" />
+        <img class="rank-thumb" style="opacity:0" src="https://steamcdn-a.akamaihd.net/steam/apps/${g.appid}/capsule_sm_120.jpg" alt="" onload="this.style.opacity='1'" onerror="this.style.visibility='hidden'" />
         <div class="rank-info">
           <div class="rank-name">${esc(g.name)}</div>
           <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
@@ -989,7 +984,7 @@ async function loadBundleList() {
         ${data.map(b => {
           const thumb = b.thumbAppid ? `https://steamcdn-a.akamaihd.net/steam/apps/${b.thumbAppid}/header.jpg` : '';
           return `<div class="bundle-card" data-id="${b.id}">
-            ${thumb ? `<img class="bundle-card-thumb" src="${thumb}" alt="" onerror="this.style.display='none'" />` : ''}
+            ${thumb ? `<img class="bundle-card-thumb" style="opacity:0" src="${thumb}" alt="" onload="this.style.opacity='1'" onerror="this.style.display='none'" />` : ''}
             <div class="bundle-card-body">
               <div class="bundle-card-title">${esc(b.title)}</div>
               ${b.comment ? `<div class="bundle-card-comment">${esc(b.comment)}</div>` : ''}
@@ -1209,7 +1204,7 @@ async function rollGacha() {
       const origFmtCalc = origPrice ? `¥${origPrice.toLocaleString('ja-JP')}` : null;
 
       html += `<div class="gacha-result-item" style="animation-delay:${i * 0.08}s">
-        <img class="gacha-result-thumb" src="${thumb}" alt="" onerror="this.style.visibility='hidden'" />
+        <img class="gacha-result-thumb" style="opacity:0" src="${thumb}" alt="" onload="this.style.opacity='1'" onerror="this.style.visibility='hidden'" />
         <span class="gacha-result-name">${esc(g.name)}</span>
         <div class="gacha-result-price">
           ${g.discount > 0 ? `
