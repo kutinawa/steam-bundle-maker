@@ -339,7 +339,7 @@ function renderBundleItems(viewMode) {
       ? `<span class="price-loading">取得中...</span>`
       : g.discount > 0
         ? `<div class="price-discount-badge">-${g.discount}%</div><div class="price-values"><span class="price-orig">${g.origFmt || ''}</span><span class="price-final">${g.finalFmt || '¥'+fmt(g.price)}</span></div>`
-        : `<div class="price-values"><span class="price-normal">${g.finalFmt || (g.price === 0 ? '無料' : '¥'+fmt(g.price))}</span></div>`;
+        : `<div class="price-values"><span class="price-normal">${g.finalFmt || (g.price === 0 && g.isFree ? '無料' : g.price > 0 ? '¥'+fmt(g.price) : '取得失敗')}</span></div>`;
     return `<div class="game-card" data-appid="${g.appid}">
       <img class="game-capsule" src="${capsule}" alt="${esc(g.name)}" onerror="this.src='https://cdn.akamai.steamstatic.com/steam/apps/${g.appid}/capsule_231x87.jpg'" />
       <div class="game-body"><div class="game-name">${esc(g.name)}</div></div>
@@ -405,7 +405,17 @@ async function doSearch() {
       res.innerHTML = `<div class="sr-item"><span style="color:var(--text-dim)">見つかりませんでした</span></div>`; return;
     }
     // 割引率フィルター適用（価格取得後に適用するため一旦全件表示、取得後にhide）
-    const items = d.items.slice(0, 10);
+    // デモ・サントラをフィルター（名前ベース）
+    const filtered = d.items.filter(item => {
+      const name = item.name.toLowerCase();
+      return !name.includes('demo') &&
+             !name.includes('デモ') &&
+             !name.includes('体験版') &&
+             !name.includes('soundtrack') &&
+             !name.includes(' ost') &&
+             !name.endsWith('ost');
+    });
+    const items = filtered.slice(0, 10);
     res.innerHTML = items.map(item => `
       <div class="sr-item" data-appid="${item.id}" data-name="${esc(item.name)}">
         <img class="sr-thumb" src="https://cdn.akamai.steamstatic.com/steam/apps/${item.id}/capsule_sm_120.jpg" alt="" onerror="this.style.visibility='hidden'" />
@@ -433,14 +443,17 @@ async function fetchPrice(appid, updateResult = false) {
     const d = await r.json();
     const po = d[String(appid)]?.data?.price_overview;
     const info = po
-      ? { price: po.final, origPrice: po.initial, discount: po.discount_percent, finalFmt: po.final_formatted, origFmt: po.initial_formatted }
-      : { price: 0, origPrice: 0, discount: 0, finalFmt: '無料', origFmt: '' };
+      ? { price: po.final, origPrice: po.initial, discount: po.discount_percent, finalFmt: po.final_formatted, origFmt: po.initial_formatted, isFree: false }
+      : { price: 0, origPrice: 0, discount: 0, finalFmt: '無料', origFmt: '', isFree: true };
     priceCache[appid] = info;
     if (updateResult) applyResultPrice(appid, info);
     const g = games.find(g => g.appid === appid);
     if (g) { Object.assign(g, info); reRenderBundle(); }
     return info;
-  } catch(e) { return null; }
+  } catch(e) {
+    // 取得失敗時はnullのまま（無料と誤表示しない）
+    return null;
+  }
 }
 
 function applyResultPrice(appid, info) {
@@ -456,7 +469,13 @@ function applyResultPrice(appid, info) {
   if (info.discount > 0) {
     el.innerHTML = `<span class="sr-discount">-${info.discount}%</span><div style="display:flex;flex-direction:column;align-items:flex-end"><span class="sr-orig">${info.origFmt}</span><span class="sr-final">${info.finalFmt}</span></div>`;
   } else {
-    el.innerHTML = `<span class="sr-normal">${info.finalFmt || '無料'}</span>`;
+    if (info.isFree) {
+      el.innerHTML = `<span class="sr-normal">無料</span>`;
+    } else if (info.finalFmt && info.finalFmt !== '無料') {
+      el.innerHTML = `<span class="sr-normal">${info.finalFmt}</span>`;
+    } else {
+      el.innerHTML = `<span style="color:var(--text-dim);font-size:11px">⚠ 日本未配信の可能性</span>`;
+    }
   }
 }
 
@@ -582,10 +601,10 @@ async function generateBundleImage() {
   const hasMore = games.length > 9;
   const cols = Math.min(3, displayGames.length);
   const rows = Math.ceil(displayGames.length / cols);
-  const thumbW = 400, thumbH = 180;
-  const padding = 4;
-  const headerH = 72;
-  const footerH = hasMore ? 32 : 24;
+  const thumbW = 460, thumbH = 215;
+  const padding = 6;
+  const headerH = 110;
+  const footerH = hasMore ? 50 : 40;
   const canvasW = cols * (thumbW + padding) - padding;
   const canvasH = headerH + rows * (thumbH + padding) - padding + footerH;
 
@@ -604,61 +623,61 @@ async function generateBundleImage() {
 
   // ヘッダー左ライン
   ctx.fillStyle = '#66c0f4';
-  ctx.fillRect(0, 0, 3, headerH);
+  ctx.fillRect(0, 0, 5, headerH);
 
   // タイトル
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 18px sans-serif';
-  ctx.fillText(title, 14, 26);
+  ctx.font = 'bold 28px sans-serif';
+  ctx.fillText(title, 20, 40);
 
   // サブテキスト（本数）
   ctx.fillStyle = '#8ba3b8';
-  ctx.font = '13px sans-serif';
-  ctx.fillText(`${games.length}タイトル`, 14, 46);
+  ctx.font = '18px sans-serif';
+  ctx.fillText(`${games.length}タイトル`, 20, 70);
 
   // 価格情報（右寄せ）
   if (savings > 0) {
     // 割引率バッジ
     const badge = `-${pct}%OFF`;
-    ctx.font = 'bold 15px sans-serif';
-    const bw = ctx.measureText(badge).width + 16;
+    ctx.font = 'bold 22px sans-serif';
+    const bw = ctx.measureText(badge).width + 24;
     ctx.fillStyle = '#4c6b22';
-    ctx.fillRect(canvasW - bw - 130, 10, bw, 26);
+    ctx.fillRect(canvasW - bw - 200, 14, bw, 38);
     ctx.fillStyle = '#a4d007';
-    ctx.fillText(badge, canvasW - bw - 122, 27);
+    ctx.fillText(badge, canvasW - bw - 188, 40);
 
     // 定価（打ち消し線）
     ctx.fillStyle = '#556b7d';
-    ctx.font = '11px sans-serif';
+    ctx.font = '16px sans-serif';
     const origText = `¥${fmt(origTotal)}`;
     const origW = ctx.measureText(origText).width;
-    ctx.fillText(origText, canvasW - origW - 10, 22);
+    ctx.fillText(origText, canvasW - origW - 14, 34);
     ctx.beginPath();
     ctx.strokeStyle = '#556b7d';
-    ctx.lineWidth = 1;
-    ctx.moveTo(canvasW - origW - 10, 18);
-    ctx.lineTo(canvasW - 10, 18);
+    ctx.lineWidth = 1.5;
+    ctx.moveTo(canvasW - origW - 14, 28);
+    ctx.lineTo(canvasW - 14, 28);
     ctx.stroke();
 
     // セール価格
     ctx.fillStyle = '#beee11';
-    ctx.font = 'bold 20px sans-serif';
+    ctx.font = 'bold 34px sans-serif';
     const finalText = `¥${fmt(total)}`;
     const finalW = ctx.measureText(finalText).width;
-    ctx.fillText(finalText, canvasW - finalW - 10, 58);
+    ctx.fillText(finalText, canvasW - finalW - 14, 82);
 
     // 割引額
     ctx.fillStyle = '#a4d007';
-    ctx.font = '12px sans-serif';
-    const saveText = `-¥${fmt(savings)}`;
+    ctx.font = '18px sans-serif';
+    const saveText = `-¥${fmt(savings)} お得`;
     const saveW = ctx.measureText(saveText).width;
-    ctx.fillText(saveText, canvasW - saveW - 10, 72);
+    ctx.fillText(saveText, canvasW - saveW - 14, 106);
   } else {
     ctx.fillStyle = '#c6d4df';
-    ctx.font = 'bold 18px sans-serif';
+    ctx.font = 'bold 30px sans-serif';
     const finalText = `¥${fmt(total)}`;
     const finalW = ctx.measureText(finalText).width;
-    ctx.fillText(finalText, canvasW - finalW - 10, 50);
+    ctx.fillText(finalText, canvasW - finalW - 14, 72);
   }
 
   // サムネイル
@@ -684,28 +703,32 @@ async function generateBundleImage() {
     if (img) ctx.drawImage(img, x, y, thumbW, thumbH);
 
     // 暗いグラデーション（バッジ可読性向上）
-    if (g.discount > 0) {
-      const grad = ctx.createLinearGradient(x, y + thumbH - 36, x, y + thumbH);
-      grad.addColorStop(0, 'rgba(0,0,0,0)');
-      grad.addColorStop(1, 'rgba(0,0,0,0.7)');
-      ctx.fillStyle = grad;
-      ctx.fillRect(x, y + thumbH - 36, thumbW, 36);
+    const grad = ctx.createLinearGradient(x, y + thumbH - 70, x, y + thumbH);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.82)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, y + thumbH - 70, thumbW, 70);
 
+    if (g.discount > 0) {
       // 割引率バッジ
-      ctx.font = 'bold 15px sans-serif';
+      ctx.font = 'bold 22px sans-serif';
       const dText = `-${g.discount}%`;
-      const dW = ctx.measureText(dText).width + 12;
+      const dW = ctx.measureText(dText).width + 18;
       ctx.fillStyle = '#4c6b22';
-      ctx.fillRect(x + 4, y + thumbH - 26, dW, 22);
+      ctx.fillRect(x + 6, y + thumbH - 44, dW, 34);
       ctx.fillStyle = '#a4d007';
-      ctx.fillText(dText, x + 10, y + thumbH - 10);
+      ctx.fillText(dText, x + 14, y + thumbH - 18);
 
       // セール価格
       if (g.finalFmt) {
         ctx.fillStyle = '#beee11';
-        ctx.font = 'bold 13px sans-serif';
-        ctx.fillText(g.finalFmt, x + dW + 10, y + thumbH - 10);
+        ctx.font = 'bold 22px sans-serif';
+        ctx.fillText(g.finalFmt, x + dW + 14, y + thumbH - 18);
       }
+    } else if (g.finalFmt) {
+      ctx.fillStyle = '#c6d4df';
+      ctx.font = 'bold 20px sans-serif';
+      ctx.fillText(g.finalFmt, x + 10, y + thumbH - 16);
     }
   }
 
@@ -716,16 +739,16 @@ async function generateBundleImage() {
 
   if (hasMore) {
     ctx.fillStyle = '#8ba3b8';
-    ctx.font = '13px sans-serif';
-    ctx.fillText(`+ ${games.length - 9} more titles`, 14, footerY + 20);
+    ctx.font = '20px sans-serif';
+    ctx.fillText(`+ ${games.length - 9} more titles`, 18, footerY + 32);
   }
 
   // 透かし
-  ctx.fillStyle = 'rgba(102,192,244,0.6)';
-  ctx.font = 'bold 11px sans-serif';
+  ctx.fillStyle = 'rgba(102,192,244,0.7)';
+  ctx.font = 'bold 16px sans-serif';
   const wText = 'My Steam Bundle';
   const wW = ctx.measureText(wText).width;
-  ctx.fillText(wText, canvasW - wW - 10, footerY + 20);
+  ctx.fillText(wText, canvasW - wW - 14, footerY + 28);
 
   const a = document.createElement('a');
   a.download = 'my-steam-bundle.png';
@@ -945,10 +968,24 @@ async function rollGacha() {
       const priceHtml = g.discount > 0
         ? `<span class="sr-discount" style="font-size:12px">-${g.discount}%</span> <span class="price-final" style="font-size:14px">${g.finalFmt}</span>`
         : `<span class="price-normal">${g.finalFmt}</span>`;
+      // 定価を計算
+      const origPrice = g.parsedPrice && g.discount > 0
+        ? Math.round(g.parsedPrice / (1 - g.discount / 100) / 100)
+        : null;
+      const origFmtCalc = origPrice ? `¥${origPrice.toLocaleString('ja-JP')}` : null;
+
       html += `<div class="gacha-result-item" style="animation-delay:${i * 0.08}s">
         <img class="gacha-result-thumb" src="${thumb}" alt="" onerror="this.style.visibility='hidden'" />
         <span class="gacha-result-name">${esc(g.name)}</span>
-        <div class="gacha-result-price">${priceHtml}</div>
+        <div class="gacha-result-price">
+          ${g.discount > 0 ? `
+            <span class="sr-discount" style="font-size:13px">-${g.discount}%</span>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;margin-left:4px">
+              ${origFmtCalc ? `<span style="color:var(--text-dim);text-decoration:line-through;font-size:11px">${origFmtCalc}</span>` : ''}
+              <span style="color:var(--green-bright);font-weight:700;font-size:15px">${g.finalFmt}</span>
+            </div>
+          ` : `<span class="price-normal">${g.finalFmt || '無料'}</span>`}
+        </div>
         <a class="game-link" href="https://store.steampowered.com/app/${g.appid}/" target="_blank" style="margin-left:8px">↗</a>
       </div>`;
     });
