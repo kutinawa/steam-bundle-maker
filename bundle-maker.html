@@ -339,7 +339,12 @@ function renderBundleItems(viewMode) {
       ? `<span class="price-loading">取得中...</span>`
       : g.discount > 0
         ? `<div class="price-discount-badge">-${g.discount}%</div><div class="price-values"><span class="price-orig">${g.origFmt || ''}</span><span class="price-final">${g.finalFmt || '¥'+fmt(g.price)}</span></div>`
-        : `<div class="price-values"><span class="price-normal">${g.finalFmt || (g.price === 0 && g.isFree ? '無料' : g.price > 0 ? '¥'+fmt(g.price) : '取得失敗')}</span></div>`;
+        : `<div class="price-values"><span class="price-normal" style="${!g.finalFmt && g.price === null ? 'color:var(--text-dim);font-size:12px' : ''}">${
+          g.finalFmt ? g.finalFmt :
+          g.price === null ? '⚠ 価格取得失敗' :
+          g.price === 0 ? '無料' :
+          '¥'+fmt(g.price)
+        }</span></div>`;
     return `<div class="game-card" data-appid="${g.appid}">
       <img class="game-capsule" src="${capsule}" alt="${esc(g.name)}" onerror="this.src='https://cdn.akamai.steamstatic.com/steam/apps/${g.appid}/capsule_231x87.jpg'" />
       <div class="game-body"><div class="game-name">${esc(g.name)}</div></div>
@@ -444,7 +449,7 @@ async function fetchPrice(appid, updateResult = false) {
     const po = d[String(appid)]?.data?.price_overview;
     const info = po
       ? { price: po.final, origPrice: po.initial, discount: po.discount_percent, finalFmt: po.final_formatted, origFmt: po.initial_formatted, isFree: false }
-      : { price: 0, origPrice: 0, discount: 0, finalFmt: '無料', origFmt: '', isFree: true };
+      : { price: null, origPrice: 0, discount: 0, finalFmt: null, origFmt: '', isFree: false };
     priceCache[appid] = info;
     if (updateResult) applyResultPrice(appid, info);
     const g = games.find(g => g.appid === appid);
