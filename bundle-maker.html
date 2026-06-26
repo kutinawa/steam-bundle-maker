@@ -120,10 +120,13 @@ button.btn-twitter { background: linear-gradient(to bottom, #1da1f2, #0d8fd9); b
 .rank-discount { font-size: 11px; background: var(--discount-bg); color: var(--discount-text); padding: 1px 6px; border-radius: 2px; }
 
 /* Bundle cards */
-.bundle-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
-.bundle-card { background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px; padding: 12px 14px; cursor: pointer; transition: border-color 0.15s; }
+.bundle-cards { display: flex; flex-direction: column; gap: 8px; }
+.bundle-card { background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px; overflow:hidden; cursor: pointer; transition: border-color 0.15s; display:flex; flex-direction:row; align-items:stretch; height:80px; }
 .bundle-card:hover { border-color: var(--accent); }
-.bundle-card-title { font-weight: 600; color: var(--text-bright); font-size: 13px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bundle-card-thumb { width:142px; height:80px; object-fit:cover; object-position:center; background:var(--surface); display:block; flex-shrink:0; }
+.bundle-card-body { padding: 10px 14px; flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; }
+.bundle-card-title { font-weight: 600; color: var(--text-bright); font-size: 14px; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bundle-card-comment { font-size: 12px; color: var(--text-muted); margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .bundle-card-meta { font-size: 11px; color: var(--text-dim); }
 
 /* Gacha */
@@ -259,6 +262,18 @@ function renderEdit() {
       <button id="searchBtn">🔍 検索</button>
     </div>
     <div class="hint" id="searchHint"></div>
+    <div style="margin-bottom:1rem">
+      <button onclick="toggleUrlAdd()" style="background:none;border:none;color:var(--text-dim);font-size:12px;padding:0;cursor:pointer" id="urlAddToggle">
+        ＋ URLで直接追加する
+      </button>
+      <div id="urlAddRow" style="display:none;margin-top:8px;display:none">
+        <div style="display:flex;gap:8px">
+          <input type="text" id="urlInput" placeholder="https://store.steampowered.com/app/12345/..." style="font-size:13px" />
+          <button onclick="addByUrl()" style="white-space:nowrap">追加</button>
+        </div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px">SteamのゲームページURLかApp IDを入力</div>
+      </div>
+    </div>
     <div class="search-results" id="searchResults"></div>
     <div class="bundle-section-header">
       <h2>バンドル内容</h2>
@@ -895,6 +910,62 @@ function timeAgo(ts) {
 }
 
 let discountMin = 0;
+
+function toggleUrlAdd() {
+  const row = document.getElementById('urlAddRow');
+  const btn = document.getElementById('urlAddToggle');
+  if (row.style.display === 'none') {
+    row.style.display = 'block';
+    btn.textContent = '✕ URLで直接追加する';
+  } else {
+    row.style.display = 'none';
+    btn.textContent = '＋ URLで直接追加する';
+  }
+}
+
+async function addByUrl() {
+  const input = document.getElementById('urlInput').value.trim();
+  if (!input) return;
+
+  // AppIDを抽出（URL or 数字）
+  let appid;
+  const urlMatch = input.match(/store\.steampowered\.com\/app\/(\d+)/);
+  if (urlMatch) {
+    appid = Number(urlMatch[1]);
+  } else if (/^\d+$/.test(input)) {
+    appid = Number(input);
+  } else {
+    setStatus('SteamのURLかApp IDを入力してください', 'err');
+    return;
+  }
+
+  if (games.find(g => g.appid === appid)) { setStatus('このゲームはすでに追加されています'); return; }
+  if (games.length >= 20) { setStatus('追加できるゲームは20本までです', 'err'); return; }
+
+  setStatus('ゲーム情報を取得中...', '');
+  try {
+    const r = await fetch(`${PROXY}/appdetails?appids=${appid}&cc=jp`);
+    const d = await r.json();
+    const data = d[String(appid)]?.data;
+    if (!data) throw new Error('ゲームが見つかりませんでした');
+
+    const name = data.name || `App ${appid}`;
+    const po = data.price_overview;
+    const info = po
+      ? { price: po.final, origPrice: po.initial, discount: po.discount_percent, finalFmt: po.final_formatted, origFmt: po.initial_formatted, isFree: false, headerImage: data.header_image || null }
+      : { price: null, origPrice: 0, discount: 0, finalFmt: null, origFmt: '', isFree: false, headerImage: data.header_image || null };
+
+    priceCache[appid] = info;
+    games.push({ appid, name, ...info });
+    document.getElementById('urlInput').value = '';
+    document.getElementById('urlAddRow').style.display = 'none';
+    document.getElementById('urlAddToggle').textContent = '＋ URLで直接追加する';
+    reRenderBundle();
+    setStatus(`✅ ${name} を追加しました`, 'ok');
+  } catch(e) {
+    setStatus(`❌ ${e.message}`, 'err');
+  }
+}
 
 let gachaBudget = 3000;
 
