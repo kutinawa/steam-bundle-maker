@@ -346,7 +346,8 @@ function renderBundleItems(viewMode) {
           '¥'+fmt(g.price)
         }</span></div>`;
     return `<div class="game-card" data-appid="${g.appid}">
-      <img class="game-capsule" src="${capsule}" alt="${esc(g.name)}" onerror="this.src='https://cdn.akamai.steamstatic.com/steam/apps/${g.appid}/capsule_231x87.jpg'" />
+      <img class="game-capsule" src="${capsule}" alt="${esc(g.name)}"
+        onerror="if(this.src.includes('header.jpg')){this.src='https://cdn.akamai.steamstatic.com/steam/apps/${g.appid}/capsule_231x87.jpg'}else{this.style.visibility='hidden'}" />
       <div class="game-body"><div class="game-name">${esc(g.name)}</div></div>
       <div class="game-price-block">${priceHtml}</div>
       <div class="game-actions-col">
@@ -439,10 +440,12 @@ async function doSearch() {
 }
 
 async function fetchPrice(appid, updateResult = false) {
-  if (priceCache[appid] !== undefined) {
+  if (priceCache[appid] !== undefined && priceCache[appid] !== 'pending') {
     if (updateResult) applyResultPrice(appid, priceCache[appid]);
     return priceCache[appid];
   }
+  if (priceCache[appid] === 'pending') return null;
+  priceCache[appid] = 'pending';
   try {
     const r = await fetch(`${PROXY}/appdetails?appids=${appid}&cc=jp`);
     const d = await r.json();
@@ -456,7 +459,11 @@ async function fetchPrice(appid, updateResult = false) {
     if (g) { Object.assign(g, info); reRenderBundle(); }
     return info;
   } catch(e) {
-    // 取得失敗時はnullのまま（無料と誤表示しない）
+    // 取得失敗時はpendingを解除して失敗状態にする
+    const failInfo = { price: null, origPrice: 0, discount: 0, finalFmt: null, origFmt: '', isFree: false };
+    priceCache[appid] = failInfo;
+    const g = games.find(g => g.appid === appid);
+    if (g) { Object.assign(g, failInfo); reRenderBundle(); }
     return null;
   }
 }
@@ -486,13 +493,13 @@ function applyResultPrice(appid, info) {
 
 function selectGame(appid, name) {
   if (games.find(g => g.appid === appid)) { setStatus('このゲームはすでに追加されています'); return; }
-  const pc = priceCache[appid];
+  const pc = (priceCache[appid] && priceCache[appid] !== 'pending') ? priceCache[appid] : null;
   games.push({ appid, name, price: pc ? pc.price : null, discount: pc ? pc.discount : 0, finalFmt: pc ? pc.finalFmt : null, origPrice: pc ? pc.origPrice : null, origFmt: pc ? pc.origFmt : null });
   document.getElementById('searchResults').style.display = 'none';
   document.getElementById('searchInput').value = '';
   document.getElementById('searchHint').textContent = '';
   reRenderBundle();
-  if (!pc) fetchPrice(appid);
+  if (!pc || priceCache[appid] === 'pending') fetchPrice(appid);
 }
 
 function removeGame(appid) {
